@@ -44,22 +44,23 @@ class _CalculatorPageState extends State<CalculatorPage> {
   void _calculateResult() {
     if (userInput.isNotEmpty) {
       try {
-        // ignore: deprecated_member_use
+        String expr = userInput
+            .replaceAll("×", "*")
+            .replaceAll("÷", "/")
+            .replaceAll(",", ".")
+            .replaceAllMapped(
+              RegExp(r'(\d+(\.\d+)?)%'),
+              (m) => '(${m[1]}/100)',
+            ); // ← обработка процентов
+
         Parser p = Parser();
-        Expression exp = p.parse(
-          userInput
-              .replaceAll("×", "*")
-              .replaceAll("÷", "/")
-              .replaceAll(",", "."),
-        );
+        Expression exp = p.parse(expr);
         ContextModel cm = ContextModel();
-        // ignore: deprecated_member_use
         double calculatedResult = exp.evaluate(EvaluationType.REAL, cm);
-        // Форматируем результат: убираем ".0", если дробная часть равна 0, и добавляем "="
         result =
             "= ${calculatedResult.toStringAsFixed(calculatedResult.truncateToDouble() == calculatedResult ? 0 : 1)}";
       } catch (e) {
-        result = userInput; // При ошибке показываем предыдущий ввод
+        result = userInput;
       }
     } else {
       result = "";
@@ -164,7 +165,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
       "2",
       "3",
       "+",
-      "±",
+      ".", // ← вместо "±" теперь пустое место
       "0",
       ",",
       "=",
@@ -204,23 +205,27 @@ class _CalculatorPageState extends State<CalculatorPage> {
                                   color: isResultDisplayed
                                       ? Colors.black
                                       : Colors.black,
-                                  child: Text(
-                                    userInput,
-                                    style: TextStyle(
-                                      fontSize: isResultDisplayed ? 25 : 50,
-                                      fontWeight: isResultDisplayed
-                                          ? FontWeight.bold
-                                          : FontWeight.bold,
-                                      color: isResultDisplayed
-                                          ? Colors.white70
-                                          : Colors.white,
+                                  child: FittedBox(
+                                    alignment: Alignment.centerRight,
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      userInput,
+                                      style: TextStyle(
+                                        fontSize: isResultDisplayed ? 25 : 47,
+                                        fontWeight: FontWeight.bold,
+                                        color: isResultDisplayed
+                                            ? Colors.white70
+                                            : Colors.white,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 ),
                                 Text(
                                   result,
                                   style: TextStyle(
-                                    fontSize: isResultDisplayed ? 50 : 25,
+                                    fontSize: isResultDisplayed ? 47 : 25,
                                     fontWeight: FontWeight.bold,
                                     color: isResultDisplayed
                                         ? Colors.white
@@ -367,6 +372,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
                             style: TextStyle(
                               color: Colors.white54,
                               fontSize: 12,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
@@ -412,17 +418,23 @@ class _CalculatorPageState extends State<CalculatorPage> {
         inputFormatters: [
           FilteringTextInputFormatter.allow(RegExp(r'[0-9\.\,\s]')),
         ],
-        style: const TextStyle(color: Colors.white),
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+        ),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(color: Color(0xff33A1E0)),
+          labelStyle: const TextStyle(
+            color: Color(0xff33A1E0),
+            fontWeight: FontWeight.bold,
+          ),
           enabledBorder: OutlineInputBorder(
             borderSide: const BorderSide(color: Color(0xff33A1E0)),
             borderRadius: BorderRadius.circular(12),
           ),
           focusedBorder: OutlineInputBorder(
-            borderSide: const BorderSide(color: Colors.white),
-            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xff33A1E0), width: 2.5),
+            borderRadius: BorderRadius.circular(20),
           ),
         ),
       ),
