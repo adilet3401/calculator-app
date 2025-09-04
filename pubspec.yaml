@@ -39,6 +39,7 @@ dependencies:
   curved_navigation_bar: ^1.0.6
   webview_flutter: ^4.13.0
   webview_flutter_wkwebview: ^3.23.0
+  firebase_core: ^4.1.0
 
 dev_dependencies:
   flutter_test:

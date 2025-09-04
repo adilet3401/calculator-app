@@ -49,7 +49,7 @@ class _TnvedPageState extends State<TnvedPage>
         ),
       )
       ..loadRequest(
-        Uri.parse('https://youtu.be/RA-vLF_vnng?si=uh2v7X_M3qTnpZnS'),
+        Uri.parse('https://tnved.info'),
       );
   }
 

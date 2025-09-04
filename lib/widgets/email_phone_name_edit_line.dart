@@ -1,0 +1,66 @@
+import 'package:flutter/material.dart';
+
+class UserEmailPasswordline extends StatelessWidget {
+  const UserEmailPasswordline({
+    super.key,
+    required this.icon,
+    required this.hinText,
+    this.controller,
+    this.errorText,
+    this.onChanged,
+    this.obsureText = false,
+    // this.inputFormatters,
+  });
+
+  final String hinText;
+  final TextEditingController? controller;
+  final String? errorText;
+  final ValueChanged<String>? onChanged;
+  // final List<TextInputFormatter>? inputFormatters;
+  final bool obsureText;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller, //controller
+      // keyboardType: TextInputType.number,asasa
+      // inputFormatters: inputFormatters, // это для ограничения ввода текста
+      onChanged: onChanged, // это для изменения поля ввода после ввода текста
+      obscureText: obsureText, // это для скрытия текста в поле ввода
+      decoration: InputDecoration(
+        prefixIcon: Padding(
+          padding: EdgeInsets.all(15),
+          child: Icon(icon, color: Colors.orange.shade300, size: 20),
+        ),
+        // labelText: labelText,
+        labelStyle: TextStyle(color: Colors.grey),
+        prefixIconColor: Colors.grey,
+        prefixIconConstraints: BoxConstraints(minWidth: 25, minHeight: 25),
+        hintText: hinText,
+        hintStyle: TextStyle(
+          color: Colors.grey,
+          fontSize: 16,
+          fontWeight: FontWeight.w400,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.orange.shade200, width: 2),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.orange, width: 2),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(24),
+          borderSide: BorderSide(color: Colors.red, width: 2),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(24),
+          borderSide: BorderSide(color: Colors.red, width: 2),
+        ),
+        errorText: errorText,
+      ),
+    );
+  }
+}

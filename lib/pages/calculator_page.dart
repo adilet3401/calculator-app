@@ -201,7 +201,7 @@ class _AnimatedButtonState extends State<_AnimatedButton> {
       onTap: widget.onPressed,
       child: AnimatedScale(
         scale: _scale,
-        duration: const Duration(milliseconds: 100),
+        duration: const Duration(milliseconds: 240),
         child: Container(
           margin: const EdgeInsets.all(8),
           decoration: BoxDecoration(
