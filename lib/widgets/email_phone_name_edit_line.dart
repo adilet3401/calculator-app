@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class UserEmailPasswordline extends StatelessWidget {
   const UserEmailPasswordline({
@@ -8,32 +9,30 @@ class UserEmailPasswordline extends StatelessWidget {
     this.controller,
     this.errorText,
     this.onChanged,
-    this.obsureText = false,
-    // this.inputFormatters,
+    this.obscureText = false,
+    this.inputFormatters,
   });
 
   final String hinText;
   final TextEditingController? controller;
   final String? errorText;
   final ValueChanged<String>? onChanged;
-  // final List<TextInputFormatter>? inputFormatters;
-  final bool obsureText;
+  final List<TextInputFormatter>? inputFormatters;
+  final bool obscureText;
   final IconData icon;
 
   @override
   Widget build(BuildContext context) {
     return TextFormField(
-      controller: controller, //controller
-      // keyboardType: TextInputType.number,asasa
-      // inputFormatters: inputFormatters, // это для ограничения ввода текста
-      onChanged: onChanged, // это для изменения поля ввода после ввода текста
-      obscureText: obsureText, // это для скрытия текста в поле ввода
+      controller: controller,
+      inputFormatters: inputFormatters,
+      onChanged: onChanged,
+      obscureText: obscureText,
       decoration: InputDecoration(
         prefixIcon: Padding(
           padding: EdgeInsets.all(15),
           child: Icon(icon, color: Colors.orange.shade300, size: 20),
         ),
-        // labelText: labelText,
         labelStyle: TextStyle(color: Colors.grey),
         prefixIconColor: Colors.grey,
         prefixIconConstraints: BoxConstraints(minWidth: 25, minHeight: 25),

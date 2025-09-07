@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class RastamozhkaPage extends StatefulWidget {
   const RastamozhkaPage({super.key});
@@ -10,6 +11,7 @@ class RastamozhkaPage extends StatefulWidget {
 }
 
 class _RastamozhkaPageState extends State<RastamozhkaPage> {
+  final nameController = TextEditingController();
   final priceController = TextEditingController();
   final dutyController = TextEditingController(text: "10");
   final ndsController = TextEditingController(text: "12");
@@ -18,63 +20,161 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
 
   bool includeFeeInVatBase = false;
   bool roundEachStep = true;
+  bool hasCalculated = false;
+  bool isSaveEnabled = false;
+  bool isSaving = false;
 
   String rastamozhkaResult = "";
-  final formatter = NumberFormat("#,###", "ru_RU");
+  String saveButtonText = "Сохранить";
 
-  double _parseNum(String raw) {
-    final s = raw
-        .trim()
-        .replaceAll(" ", "")
-        .replaceAll("\u00A0", "")
-        .replaceAll(",", ".");
-    return double.tryParse(s) ?? 0.0;
+  Future<void> saveToHistoryFirebase() async {
+    setState(() {
+      isSaving = true;
+      saveButtonText = "Сохранение...";
+    });
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final name = nameController.text.trim();
+
+    if (uid == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Ошибка авторизации')));
+      setState(() {
+        isSaving = false;
+        saveButtonText = "Сохранить";
+      });
+      return;
+    }
+
+    if (name.isEmpty || !RegExp(r'^\d+$').hasMatch(name)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Введите числовой код в поле "Наименование"'),
+        ),
+      );
+      setState(() {
+        isSaving = false;
+        saveButtonText = "Сохранить";
+      });
+      return;
+    }
+
+    final data = {
+      'price': priceController.text,
+      'duty': dutyController.text,
+      'nds': ndsController.text,
+      'fee': feeController.text,
+      'freight': freightController.text,
+      'includeFeeInVatBase': includeFeeInVatBase,
+      'roundEachStep': roundEachStep,
+      'result': rastamozhkaResult,
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+    };
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('history')
+          .doc(name)
+          .set(data);
+
+      // ignore: use_build_context_synchronously
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Успешно сохранено',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      setState(() {
+        saveButtonText = "Сохранено";
+        isSaving = false;
+      });
+
+      await Future.delayed(const Duration(seconds: 2));
+      if (mounted) {
+        setState(() {
+          saveButtonText = "Сохранить";
+        });
+      }
+    } catch (e) {
+      // ignore: use_build_context_synchronously
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка сохранения: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      setState(() {
+        saveButtonText = "Сохранить";
+        isSaving = false;
+      });
+    }
   }
 
-  num _maybeRound(num v) => roundEachStep ? v.round() : v;
-
-  void calculateRastamozhka() {
-    final price = _parseNum(priceController.text);
-    final dutyRate = _parseNum(dutyController.text) / 100;
-    final ndsRate = _parseNum(ndsController.text) / 100;
-    final feeRate = _parseNum(feeController.text) / 100;
-    final freight = _parseNum(freightController.text);
-
-    num duty = price * dutyRate;
-    duty = _maybeRound(duty);
-
-    num fee = price * feeRate;
-    fee = _maybeRound(fee);
-
-    num vatBase = price + duty + freight + (includeFeeInVatBase ? fee : 0);
-    vatBase = _maybeRound(vatBase);
-
-    num nds = vatBase * ndsRate;
-    nds = _maybeRound(nds);
-
-    num total = duty + nds + fee;
-    total = _maybeRound(total);
-
-    setState(() {
-      rastamozhkaResult =
-          """
-Пошлина: ${formatter.format(duty)} сом
-НДС: ${formatter.format(nds)} сом
-Таможенный сбор: ${formatter.format(fee)} сом
----------------------
-Итого: ${formatter.format(total)} сом
-""";
+  @override
+  void initState() {
+    super.initState();
+    nameController.addListener(() {
+      final text = nameController.text.trim();
+      setState(() {
+        isSaveEnabled = text.isNotEmpty && RegExp(r'^\d+$').hasMatch(text);
+      });
     });
   }
 
   @override
   void dispose() {
+    nameController.dispose();
     priceController.dispose();
     dutyController.dispose();
     ndsController.dispose();
     feeController.dispose();
     freightController.dispose();
     super.dispose();
+  }
+
+  void calculateRastamozhka() {
+    final priceText = priceController.text.replaceAll(' ', '');
+    if (priceText.isEmpty) {
+      setState(() {
+        rastamozhkaResult = "Введите стоимость товара!";
+        hasCalculated = true;
+      });
+      return;
+    }
+
+    final price = int.tryParse(priceText) ?? 0;
+    final dutyPercent = double.tryParse(dutyController.text) ?? 0;
+    final ndsPercent = double.tryParse(ndsController.text) ?? 0;
+    final feePercent = double.tryParse(feeController.text) ?? 0;
+    final freight = double.tryParse(freightController.text) ?? 0;
+
+    int dutySum = (price * dutyPercent / 100).round();
+    if (roundEachStep) dutySum = dutySum.round();
+
+    int feeSum = (price * feePercent / 100).round();
+    if (roundEachStep) feeSum = feeSum.round();
+
+    double vatBase = price + dutySum + freight;
+    if (includeFeeInVatBase) vatBase += feeSum;
+
+    int ndsSum = (vatBase * ndsPercent / 100).round();
+    if (roundEachStep) ndsSum = ndsSum.round();
+
+    int total = dutySum + ndsSum + feeSum;
+
+    setState(() {
+      rastamozhkaResult =
+          "Пошлина: $dutySum сом\nНДС: $ndsSum сом\nТаможенный сбор: $feeSum сом\n----------------------\nИтого: $total сом";
+      saveButtonText = "Сохранить";
+      hasCalculated = true;
+    });
   }
 
   @override
@@ -87,23 +187,18 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              _buildField("Наименование", nameController, isName: true),
               _buildField("Стоимость товара", priceController),
               Row(
                 children: [
-                  Expanded(
-                    child: _buildField("Пошлина (%)", dutyController),
-                  ),
+                  Expanded(child: _buildField("Пошлина (%)", dutyController)),
                   const SizedBox(width: 10),
-                  Expanded(
-                    child: _buildField("НДС (%)", ndsController),
-                  ),
+                  Expanded(child: _buildField("НДС (%)", ndsController)),
                 ],
               ),
               Row(
                 children: [
-                  Expanded(
-                    child: _buildField("Сбор (%)", feeController),
-                  ),
+                  Expanded(child: _buildField("Сбор (%)", feeController)),
                   const SizedBox(width: 10),
                   Expanded(
                     child: _buildField(
@@ -146,17 +241,76 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              Text(
-                rastamozhkaResult,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'RobotoMono',
-                  letterSpacing: 1,
+
+              // --- Кнопка "Сохранить" + результат ---
+              if (hasCalculated) ...[
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    if (isSaveEnabled && !isSaving) {
+                      saveToHistoryFirebase();
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: (saveButtonText == "Сохранено")
+                        ? Colors.green
+                        : (!isSaveEnabled || isSaving)
+                        ? Colors.grey
+                        : Colors.green,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 40,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: isSaving
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (saveButtonText == "Сохранено") ...[
+                              const Icon(Icons.check, color: Colors.white),
+                              const SizedBox(width: 8),
+                            ],
+                            Text(
+                              saveButtonText,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
                 ),
-              ),
+                if (rastamozhkaResult.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    color: Colors.black,
+                    margin: const EdgeInsets.only(top: 16),
+                    padding: const EdgeInsets.all(20),
+                    child: Text(
+                      rastamozhkaResult,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'RobotoMono',
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ),
+              ],
             ],
           ),
         ),
@@ -164,7 +318,11 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
     );
   }
 
-  Widget _buildField(String label, TextEditingController controller) {
+  Widget _buildField(
+    String label,
+    TextEditingController controller, {
+    bool isName = false,
+  }) {
     final isPrice = label == "Стоимость товара";
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -172,7 +330,9 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
         controller: controller,
         keyboardType: TextInputType.number,
         inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'[0-9\.\,\s]')),
+          if (isName) FilteringTextInputFormatter.digitsOnly,
+          if (!isName)
+            FilteringTextInputFormatter.allow(RegExp(r'[0-9\.\,\s]')),
           if (isPrice) ThousandsFormatter(),
         ],
         style: const TextStyle(

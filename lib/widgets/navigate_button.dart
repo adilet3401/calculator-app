@@ -8,7 +8,7 @@ class NavigateButton extends StatelessWidget {
     required this.borderRadius,
     required this.minimumSize,
     this.isLoading =
-        false, // Добавляем переменную isLoading с дефолтным значением false
+        false, CircularProgressIndicator? child, // Добавляем переменную isLoading с дефолтным значением false
   });
 
   final String text;

@@ -29,7 +29,7 @@ class _HomePageState extends State<HomePage> {
     Colors.black, // RastamozhkaPage
     Colors.white, // TnvedPage
     Colors.black, // CalculatorPage
-    Colors.white, // HistoryPage
+    Colors.black, // HistoryPage
     Colors.white, // ProfilePage
   ];
 
