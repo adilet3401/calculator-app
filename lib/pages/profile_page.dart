@@ -1,18 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
 
-  Future<Map<String, dynamic>?> _getUserData() async {
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  Map<String, dynamic>? userData;
+  bool isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return null;
+    if (uid == null) return;
     final doc = await FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
         .get();
-    return doc.data();
+    setState(() {
+      userData = doc.data();
+    });
   }
 
   String _formatDate(dynamic timestamp) {
@@ -27,10 +46,39 @@ class ProfilePage extends StatelessWidget {
     return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
   }
 
+  Future<void> _changeAvatar() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile == null) return;
+
+    setState(() {
+      isLoading = true;
+    });
+
+    final file = File(pickedFile.path);
+    final storageRef = FirebaseStorage.instance.ref().child('avatars/$uid.jpg');
+    await storageRef.putFile(file);
+    final avatarUrl = await storageRef.getDownloadURL();
+
+    await FirebaseFirestore.instance.collection('users').doc(uid).update({
+      'avatarUrl': avatarUrl,
+    });
+
+    await _loadUserData();
+
+    setState(() {
+      isLoading = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF0ECE9),
+      backgroundColor: const Color(0xFFF0ECE9),
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -44,116 +92,101 @@ class ProfilePage extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: FutureBuilder<Map<String, dynamic>?>(
-        future: _getUserData(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final data = snapshot.data;
-          if (data == null) {
-            return const Center(child: Text('Нет данных пользователя'));
-          }
-          return Column(
-            children: [
-              const SizedBox(height: 24),
-              Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 54,
-                    backgroundColor: Colors.orange.shade100,
-                    child: CircleAvatar(
-                      radius: 50,
-                      backgroundImage: data['avatarUrl'] != null
-                          ? NetworkImage(data['avatarUrl'])
-                          : const AssetImage(
-                                  'assets/default-avatar-icon-of-social-media-user-vector.jpg',
+      body: userData == null
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                const SizedBox(height: 24),
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    CircleAvatar(
+                      radius: 54,
+                      backgroundColor: Colors.orange.shade100,
+                      child: CircleAvatar(
+                        radius: 50,
+                        backgroundImage: userData!['avatarUrl'] != null
+                            ? NetworkImage(userData!['avatarUrl'])
+                            : const AssetImage(
+                                    'assets/default-avatar-icon-of-social-media-user-vector.jpg',
+                                  )
+                                  as ImageProvider,
+                      ),
+                    ),
+                    Positioned(
+                      top: -8,
+                      right: -8,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: isLoading ? null : _changeAvatar,
+                        child: CircleAvatar(
+                          radius: 20,
+                          backgroundColor: Colors.orange.shade200,
+                          child: isLoading
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white,
                                 )
-                                as ImageProvider,
+                              : const Icon(Icons.add, color: Colors.white),
+                        ),
+                      ),
                     ),
-                  ),
-                  Positioned(
-                    top: 0,
-                    right: 0,
-                    child: CircleAvatar(
-                      radius: 20,
-                      backgroundColor: Colors.orange.shade200,
-                      child: const Icon(Icons.add, color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                data['name'] ?? 'Имя не указано',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20,
-                  color: Colors.black,
+                  ],
                 ),
-                textAlign: TextAlign.center,
-              ),
-              if (data['age'] != null)
+                const SizedBox(height: 16),
                 Text(
-                  '${data['age']} лет',
-                  style: const TextStyle(fontSize: 16, color: Colors.grey),
+                  userData!['name'] ?? 'Имя не указано',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    color: Colors.black,
+                  ),
                   textAlign: TextAlign.center,
                 ),
-              const SizedBox(height: 24),
-              Divider(color: Colors.grey.shade300),
-              ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: Colors.orange.shade100,
-                  child: const Icon(Icons.email, color: Colors.orange),
+                if (userData!['age'] != null)
+                  Text(
+                    '${userData!['age']} лет',
+                    style: const TextStyle(fontSize: 16, color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
+                const SizedBox(height: 24),
+                Divider(color: Colors.grey.shade300),
+                ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.orange.shade100,
+                    child: const Icon(Icons.email, color: Colors.orange),
+                  ),
+                  title: Text(
+                    userData!['email'] ?? '',
+                    style: const TextStyle(fontSize: 16),
+                  ),
                 ),
-                title: Text(
-                  data['email'] ?? '',
-                  style: const TextStyle(fontSize: 16),
+                ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.orange.shade100,
+                    child: const Icon(Icons.phone, color: Colors.orange),
+                  ),
+                  title: Text(
+                    userData!['phone'] ?? 'Нет номера',
+                    style: const TextStyle(fontSize: 16),
+                  ),
                 ),
-              ),
-              ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: Colors.orange.shade100,
-                  child: const Icon(Icons.phone, color: Colors.orange),
+                ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.orange.shade100,
+                    child: const Icon(
+                      Icons.calendar_today,
+                      color: Colors.orange,
+                    ),
+                  ),
+                  title: Text(
+                    userData!['createdAt'] != null
+                        ? _formatDate(userData!['createdAt'])
+                        : 'Дата регистрации неизвестна',
+                    style: const TextStyle(fontSize: 16),
+                  ),
                 ),
-                title: Text(
-                  data['phone'] ?? 'Нет номера',
-                  style: const TextStyle(fontSize: 16),
-                ),
-              ),
-              ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: Colors.orange.shade100,
-                  child: const Icon(Icons.calendar_today, color: Colors.orange),
-                ),
-                title: Text(
-                  data['createdAt'] != null
-                      ? _formatDate(data['createdAt'])
-                      : 'Дата регистрации неизвестна',
-                  style: const TextStyle(fontSize: 16),
-                ),
-              ),
-              // ListTile(
-              //   leading: CircleAvatar(
-              //     backgroundColor: Colors.orange.shade100,
-              //     child: const Icon(Icons.settings, color: Colors.orange),
-              //   ),
-              //   title: const Text('Settings', style: TextStyle(fontSize: 16)),
-              //   trailing: const Icon(Icons.chevron_right),
-              //   onTap: () {},
-              // ),
-              // const Spacer(),
-              // Container(
-              //   height: 80,
-              //   decoration: BoxDecoration(
-              //     color: Colors.orange.shade100,
-              //     borderRadius: BorderRadius.vertical(top: Radius.circular(60)),
-              //   ),
-              // ),
-            ],
-          );
-        },
-      ),
+              ],
+            ),
     );
   }
 }

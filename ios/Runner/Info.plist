@@ -50,5 +50,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Для выбора фотографии профиля</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Для съемки фотографии профиля</string>
 </dict>
 </plist>
