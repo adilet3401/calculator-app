@@ -115,7 +115,7 @@ class _ProfilePageState extends State<ProfilePage> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          color: Colors.orange,
+          color: Color(0xFFF0ECE9),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
