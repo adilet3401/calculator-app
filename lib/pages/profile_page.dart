@@ -101,9 +101,7 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     if (isFirstLoad) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (userData == null) {
@@ -122,12 +120,17 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         title: const Text(
           'Профиль',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+            fontSize: 20,
+          ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
       body: Column(
+        // mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const SizedBox(height: 24),
           Stack(
@@ -143,7 +146,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       : const AssetImage(
                               'assets/default-avatar-icon-of-social-media-user-vector.jpg',
                             )
-                          as ImageProvider,
+                            as ImageProvider,
                 ),
               ),
               Positioned(
@@ -173,12 +176,12 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             textAlign: TextAlign.center,
           ),
-          if (userData!['age'] != null)
-            Text(
-              '${userData!['age']} лет',
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
+          // if (userData!['age'] != null)
+          // Text(
+          //   '${userData!['age']} лет',
+          //   style: const TextStyle(fontSize: 16, color: Colors.grey),
+          //   textAlign: TextAlign.center,
+          // ),
           const SizedBox(height: 24),
           Divider(color: Colors.grey.shade300),
           ListTile(
@@ -188,19 +191,23 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             title: Text(
               userData!['email'] ?? '',
-              style: const TextStyle(fontSize: 16),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey.shade700,
+              ),
             ),
           ),
-          ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Colors.orange.shade100,
-              child: const Icon(Icons.phone, color: Colors.orange),
-            ),
-            title: Text(
-              userData!['phone'] ?? 'Нет номера',
-              style: const TextStyle(fontSize: 16),
-            ),
-          ),
+          // ListTile(
+          //   leading: CircleAvatar(
+          //     backgroundColor: Colors.orange.shade100,
+          //     child: const Icon(Icons.phone, color: Colors.orange),
+          //   ),
+          //   title: Text(
+          //     userData!['phone'] ?? 'Нет номера',
+          //     style: const TextStyle(fontSize: 16),
+          //   ),
+          // ),
           ListTile(
             leading: CircleAvatar(
               backgroundColor: Colors.orange.shade100,
@@ -210,8 +217,76 @@ class _ProfilePageState extends State<ProfilePage> {
               userData!['createdAt'] != null
                   ? _formatDate(userData!['createdAt'])
                   : 'Дата регистрации неизвестна',
-              style: const TextStyle(fontSize: 16),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey.shade700,
+              ),
             ),
+          ),
+          ListTile(
+            leading: CircleAvatar(
+              backgroundColor: Colors.red.shade100,
+              child: const Icon(Icons.logout, color: Colors.red),
+            ),
+            title: const Text(
+              'Выйти',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Colors.red,
+              ),
+            ),
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  title: const Text(
+                    'Действительно выйти с аккаунта?',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                  ),
+                  actionsAlignment: MainAxisAlignment.center,
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text(
+                        'Отмена',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () async {
+                        await FirebaseAuth.instance.signOut();
+                        if (context.mounted) {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).pushReplacementNamed('/');
+                        }
+                      },
+                      child: const Text(
+                        'Выйти',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ],
       ),

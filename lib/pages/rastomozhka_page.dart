@@ -81,15 +81,15 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
           .set(data);
 
       // ignore: use_build_context_synchronously
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Успешно сохранено',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-          backgroundColor: Colors.green,
-        ),
-      );
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   const SnackBar(
+      //     content: Text(
+      //       'Успешно сохранено',
+      //       style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      //     ),
+      //     backgroundColor: Colors.green,
+      //   ),
+      // );
 
       setState(() {
         saveButtonText = "Сохранено";
@@ -278,10 +278,6 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (saveButtonText == "Сохранено") ...[
-                              const Icon(Icons.check, color: Colors.white),
-                              const SizedBox(width: 8),
-                            ],
                             Text(
                               saveButtonText,
                               style: const TextStyle(
@@ -290,6 +286,10 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
                                 color: Colors.white,
                               ),
                             ),
+                            if (saveButtonText == "Сохранено") ...[
+                              const SizedBox(width: 8),
+                              const Icon(Icons.check, color: Colors.white),
+                            ],
                           ],
                         ),
                 ),
