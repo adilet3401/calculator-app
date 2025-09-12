@@ -54,7 +54,7 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: iconBgColors[index], // фон под навбар
         buttonBackgroundColor: Colors.orange, // фон активной иконки
         color: Colors.orange, // цвет панели
-        height: 70,
+        height: 60,
         items: items,
         index: index,
         onTap: (value) => setState(() {
