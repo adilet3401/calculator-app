@@ -80,17 +80,6 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
           .doc(name)
           .set(data);
 
-      // ignore: use_build_context_synchronously
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   const SnackBar(
-      //     content: Text(
-      //       'Успешно сохранено',
-      //       style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-      //     ),
-      //     backgroundColor: Colors.green,
-      //   ),
-      // );
-
       setState(() {
         saveButtonText = "Сохранено";
         isSaving = false;
@@ -179,6 +168,8 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isGuest = FirebaseAuth.instance.currentUser?.isAnonymous ?? true;
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -245,54 +236,65 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
               // --- Кнопка "Сохранить" + результат ---
               if (hasCalculated) ...[
                 const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    if (isSaveEnabled && !isSaving) {
-                      saveToHistoryFirebase();
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: (saveButtonText == "Сохранено")
-                        ? Colors.green
-                        : (!isSaveEnabled || isSaving)
-                        ? Colors.grey
-                        : Colors.green,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 40,
-                      vertical: 14,
+                if (!isGuest)
+                  ElevatedButton(
+                    onPressed: () {
+                      if (isSaveEnabled && !isSaving) {
+                        saveToHistoryFirebase();
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: (saveButtonText == "Сохранено")
+                          ? Colors.green
+                          : (!isSaveEnabled || isSaving)
+                              ? Colors.grey
+                              : Colors.green,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 40,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: isSaving
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              saveButtonText,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
+                    child: isSaving
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
                             ),
-                            if (saveButtonText == "Сохранено") ...[
-                              const SizedBox(width: 8),
-                              const Icon(Icons.check, color: Colors.white),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                saveButtonText,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              if (saveButtonText == "Сохранено") ...[
+                                const SizedBox(width: 8),
+                                const Icon(Icons.check, color: Colors.white),
+                              ],
                             ],
-                          ],
-                        ),
-                ),
+                          ),
+                  )
+                else
+                  Text(
+                    "Вы зашли как гость. Чтобы сохранять историю — зарегистрируйтесь",
+                    style: const TextStyle(
+                      color: Colors.orange,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 if (rastamozhkaResult.isNotEmpty)
                   Container(
                     width: double.infinity,

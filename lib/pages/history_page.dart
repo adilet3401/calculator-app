@@ -98,8 +98,10 @@ class _HistoryPageState extends State<HistoryPage> {
               ),
             ),
             onPressed: () async {
-              await _deleteHistoryItem(name);
-              if (mounted) Navigator.of(context).pop();
+              if (mounted) {
+                Navigator.of(context).pop(); // Сначала закрываем диалог
+              }
+              await _deleteHistoryItem(name); // Потом удаляем
             },
             child: const Text(
               'Удалить',

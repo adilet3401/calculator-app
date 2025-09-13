@@ -1,3 +1,4 @@
+import 'package:calculator/sign-log_in%20pages/register_page_in_guest.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -16,14 +17,29 @@ class _ProfilePageState extends State<ProfilePage> {
   Map<String, dynamic>? userData;
   bool isLoading = false;
   bool isFirstLoad = true;
+  bool isGuest = false;
 
   @override
   void initState() {
     super.initState();
-    _loadUserData();
+    _checkUserType();
   }
 
-  /// Загружаем данные профиля или создаём их, если документа нет
+  Future<void> _checkUserType() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    if (user.isAnonymous) {
+      // Если пользователь гость — не грузим Firestore
+      setState(() {
+        isGuest = true;
+        isFirstLoad = false;
+      });
+    } else {
+      await _loadUserData();
+    }
+  }
+
   Future<void> _loadUserData() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     final user = FirebaseAuth.instance.currentUser;
@@ -34,7 +50,6 @@ class _ProfilePageState extends State<ProfilePage> {
     final doc = await docRef.get();
 
     if (!doc.exists) {
-      // создаём профиль с дефолтными данными
       await docRef.set({
         "name": user?.displayName ?? "Без имени",
         "email": user?.email ?? "",
@@ -55,7 +70,6 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  /// Форматируем дату
   String _formatDate(dynamic timestamp) {
     DateTime date;
     if (timestamp is Timestamp) {
@@ -68,7 +82,6 @@ class _ProfilePageState extends State<ProfilePage> {
     return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
   }
 
-  /// Смена аватара
   Future<void> _changeAvatar() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
@@ -104,33 +117,73 @@ class _ProfilePageState extends State<ProfilePage> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    if (isGuest) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF0ECE9),
+        appBar: AppBar(
+          title: const Text('Профиль'),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.person_outline, size: 80, color: Colors.grey),
+              const SizedBox(height: 20),
+              const Text(
+                "Вы зашли как гость,\nхотите зарегистрироваться?",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const RegisterPageInGuest(),
+                    ),
+                  );
+                },
+                child: const Text(
+                  "Зарегистрироваться",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (userData == null) {
       return const Scaffold(
         body: Center(child: Text("Нет данных о пользователе")),
       );
     }
 
+    // --- Обычный профиль как у вас ---
     return Scaffold(
       backgroundColor: const Color(0xFFF0ECE9),
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          color: Color(0xFFF0ECE9),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: const Text(
           'Профиль',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-            fontSize: 20,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
       body: Column(
-        // mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const SizedBox(height: 24),
           Stack(
@@ -153,7 +206,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 top: -8,
                 right: -8,
                 child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
                   onTap: isLoading ? null : _changeAvatar,
                   child: CircleAvatar(
                     radius: 20,
@@ -174,14 +226,7 @@ class _ProfilePageState extends State<ProfilePage> {
               fontSize: 20,
               color: Colors.black,
             ),
-            textAlign: TextAlign.center,
           ),
-          // if (userData!['age'] != null)
-          // Text(
-          //   '${userData!['age']} лет',
-          //   style: const TextStyle(fontSize: 16, color: Colors.grey),
-          //   textAlign: TextAlign.center,
-          // ),
           const SizedBox(height: 24),
           Divider(color: Colors.grey.shade300),
           ListTile(
@@ -198,16 +243,6 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
           ),
-          // ListTile(
-          //   leading: CircleAvatar(
-          //     backgroundColor: Colors.orange.shade100,
-          //     child: const Icon(Icons.phone, color: Colors.orange),
-          //   ),
-          //   title: Text(
-          //     userData!['phone'] ?? 'Нет номера',
-          //     style: const TextStyle(fontSize: 16),
-          //   ),
-          // ),
           ListTile(
             leading: CircleAvatar(
               backgroundColor: Colors.orange.shade100,
@@ -223,70 +258,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 color: Colors.grey.shade700,
               ),
             ),
-          ),
-          ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Colors.red.shade100,
-              child: const Icon(Icons.logout, color: Colors.red),
-            ),
-            title: const Text(
-              'Выйти',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Colors.red,
-              ),
-            ),
-            onTap: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  title: const Text(
-                    'Действительно выйти с аккаунта?',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-                  ),
-                  actionsAlignment: MainAxisAlignment.center,
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text(
-                        'Отмена',
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: () async {
-                        await FirebaseAuth.instance.signOut();
-                        if (context.mounted) {
-                          Navigator.of(context).pop();
-                          Navigator.of(context).pushReplacementNamed('/');
-                        }
-                      },
-                      child: const Text(
-                        'Выйти',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
           ),
         ],
       ),

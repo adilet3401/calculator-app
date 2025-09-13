@@ -14,12 +14,17 @@ class _CalculatorPageState extends State<CalculatorPage> {
   String result = "";
   bool isResultDisplayed = false;
 
+  double topFontSize = 47;
+  double bottomFontSize = 25;
+
   void buttonPressed(String text) {
     setState(() {
       if (text == "C") {
         userInput = "";
         result = "";
         isResultDisplayed = false;
+        topFontSize = 47;
+        bottomFontSize = 25;
       } else if (text == "⌫") {
         if (userInput.isNotEmpty) {
           userInput = userInput.substring(0, userInput.length - 1);
@@ -28,11 +33,34 @@ class _CalculatorPageState extends State<CalculatorPage> {
       } else if (text == "=") {
         _calculateResult();
         isResultDisplayed = true;
+        _animateFontSizes();
       } else {
-        userInput += text;
+        final operators = ["+", "-", "×", "÷"];
+
+        if (operators.contains(text)) {
+          if (userInput.isEmpty) return;
+
+          if (operators.contains(userInput.characters.last)) {
+            userInput = userInput.substring(0, userInput.length - 1) + text;
+          } else {
+            userInput += text;
+          }
+        } else {
+          userInput += text;
+        }
+
         _calculateResult();
         isResultDisplayed = false;
+        topFontSize = 47;
+        bottomFontSize = 25;
       }
+    });
+  }
+
+  void _animateFontSizes() {
+    setState(() {
+      topFontSize = 25;
+      bottomFontSize = 47;
     });
   }
 
@@ -102,33 +130,47 @@ class _CalculatorPageState extends State<CalculatorPage> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(5),
-                      color: Colors.black,
-                      child: FittedBox(
-                        alignment: Alignment.centerRight,
-                        fit: BoxFit.scaleDown,
-                        child: Text(
+                    // userInput c плавной анимацией
+                    TweenAnimationBuilder<double>(
+                      tween: Tween<double>(
+                        begin: topFontSize,
+                        end: topFontSize,
+                      ),
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, value, child) {
+                        return Text(
                           userInput,
                           style: TextStyle(
-                            fontSize: isResultDisplayed ? 25 : 47,
+                            fontSize: value,
                             fontWeight: FontWeight.bold,
                             color: isResultDisplayed
                                 ? Colors.white70
                                 : Colors.white,
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     ),
-                    Text(
-                      result,
-                      style: TextStyle(
-                        fontSize: isResultDisplayed ? 47 : 25,
-                        fontWeight: FontWeight.bold,
-                        color: isResultDisplayed
-                            ? Colors.white
-                            : Colors.white60,
+                    // result c плавной анимацией
+                    TweenAnimationBuilder<double>(
+                      tween: Tween<double>(
+                        begin: bottomFontSize,
+                        end: bottomFontSize,
                       ),
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, value, child) {
+                        return Text(
+                          result,
+                          style: TextStyle(
+                            fontSize: value,
+                            fontWeight: FontWeight.bold,
+                            color: isResultDisplayed
+                                ? Colors.white
+                                : Colors.white60,
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -183,25 +225,26 @@ class _AnimatedButton extends StatefulWidget {
 class _AnimatedButtonState extends State<_AnimatedButton> {
   double _scale = 1.0;
 
-  void _onTapDown(_) {
-    setState(() => _scale = 0.9);
+  void _animateTap() async {
+    setState(() => _scale = 0.92);
     HapticFeedback.lightImpact();
+    await Future.delayed(const Duration(milliseconds: 100));
+    if (mounted) setState(() => _scale = 1.0);
   }
 
-  void _onTapUp(_) {
-    setState(() => _scale = 1.0);
+  void _onTap() {
+    _animateTap();
+    widget.onPressed();
   }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: _onTapDown,
-      onTapUp: _onTapUp,
-      onTapCancel: () => setState(() => _scale = 1.0),
-      onTap: widget.onPressed,
+      onTap: _onTap,
       child: AnimatedScale(
         scale: _scale,
-        duration: const Duration(milliseconds: 240),
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOutCubic,
         child: Container(
           margin: const EdgeInsets.all(8),
           decoration: BoxDecoration(

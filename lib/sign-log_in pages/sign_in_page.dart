@@ -49,6 +49,7 @@ class _SignInPageState extends State<SignInPage> {
         password: password,
       );
       Navigator.pushReplacement(
+        // ignore: use_build_context_synchronously
         context,
         MaterialPageRoute(builder: (context) => HomePage()),
       );
@@ -89,6 +90,7 @@ class _SignInPageState extends State<SignInPage> {
     try {
       await FirebaseAuth.instance.signInAnonymously();
       Navigator.pushReplacement(
+        // ignore: use_build_context_synchronously
         context,
         MaterialPageRoute(builder: (context) => HomePage()),
       );
