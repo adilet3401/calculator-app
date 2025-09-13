@@ -1,4 +1,3 @@
-// import 'package:calculator/pages/home_page.dart';
 import 'package:calculator/pages/home_page.dart';
 import 'package:calculator/sign-log_in%20pages/register_page.dart';
 import 'package:calculator/widgets/sign_in_to_google.dart';
@@ -50,7 +49,6 @@ class _SignInPageState extends State<SignInPage> {
         password: password,
       );
       Navigator.pushReplacement(
-        // ignore: use_build_context_synchronously
         context,
         MaterialPageRoute(builder: (context) => HomePage()),
       );
@@ -87,6 +85,20 @@ class _SignInPageState extends State<SignInPage> {
     }
   }
 
+  Future<void> _signInAnonymously() async {
+    try {
+      await FirebaseAuth.instance.signInAnonymously();
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => HomePage()),
+      );
+    } catch (e) {
+      setState(() {
+        errorText = 'Не удалось войти как гость';
+      });
+    }
+  }
+
   @override
   void dispose() {
     emailController.dispose();
@@ -103,8 +115,9 @@ class _SignInPageState extends State<SignInPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Padding(
-              padding: const EdgeInsets.only(bottom: 60, left: 260),
+              padding: EdgeInsets.only(bottom: 60, left: 260),
               child: InkWell(
+                onTap: _signInAnonymously,
                 child: Text(
                   'Пропустить',
                   style: TextStyle(
@@ -113,12 +126,6 @@ class _SignInPageState extends State<SignInPage> {
                     fontSize: 13,
                   ),
                 ),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => HomePage()),
-                  );
-                },
               ),
             ),
             UserEmailPasswordline(
@@ -126,7 +133,7 @@ class _SignInPageState extends State<SignInPage> {
               hinText: 'Ваша электронная почта',
               controller: emailController,
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             UserEmailPasswordline(
               icon: Icons.remove_red_eye_outlined,
               hinText: 'Пароль',
@@ -134,24 +141,24 @@ class _SignInPageState extends State<SignInPage> {
               obscureText: true,
             ),
             if (errorText != null) ...[
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               Text(
                 errorText!,
-                style: TextStyle(color: Colors.red, fontSize: 13),
+                style: const TextStyle(color: Colors.red, fontSize: 13),
               ),
             ],
-            SizedBox(height: 40),
+            const SizedBox(height: 40),
             NavigateButton(
               text: isLoading ? 'Вход...' : 'Вход',
               borderRadius: BorderRadius.circular(24),
-              minimumSize: Size(double.infinity, 56),
+              minimumSize: const Size(double.infinity, 56),
               onPressed: isLoading ? null : _signIn,
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
+                const Text(
                   'Нету зарегистрированного аккаунта?',
                   style: TextStyle(
                     color: Color(0xff878787),
@@ -159,15 +166,15 @@ class _SignInPageState extends State<SignInPage> {
                     fontSize: 12,
                   ),
                 ),
-                SizedBox(width: 9),
+                const SizedBox(width: 9),
                 InkWell(
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => RegisterPage()),
+                      MaterialPageRoute(builder: (context) => const RegisterPage()),
                     );
                   },
-                  child: Text(
+                  child: const Text(
                     'Регистрация',
                     style: TextStyle(
                       color: Colors.blue,
@@ -178,7 +185,7 @@ class _SignInPageState extends State<SignInPage> {
                 ),
               ],
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -190,7 +197,7 @@ class _SignInPageState extends State<SignInPage> {
                     endIndent: 10,
                   ),
                 ),
-                Text(
+                const Text(
                   'Или',
                   style: TextStyle(
                     color: Color(0xff878787),
@@ -208,8 +215,8 @@ class _SignInPageState extends State<SignInPage> {
                 ),
               ],
             ),
-            SizedBox(height: 30),
-            ButtonSignInToGoogle(),
+            const SizedBox(height: 30),
+            const ButtonSignInToGoogle(),
           ],
         ),
       ),
