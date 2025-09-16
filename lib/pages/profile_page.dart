@@ -53,6 +53,7 @@ class _ProfilePageState extends State<ProfilePage> {
               Navigator.of(context).pop();
               await FirebaseAuth.instance.signOut();
               if (mounted) {
+                // ignore: use_build_context_synchronously
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (context) => const SignInPage()),
                   (route) => false,
@@ -310,6 +311,7 @@ class _ProfilePageState extends State<ProfilePage> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
+              // ignore: deprecated_member_use
               tileColor: Colors.redAccent.withOpacity(0.12),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12),
             ),

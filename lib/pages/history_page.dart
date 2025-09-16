@@ -122,6 +122,7 @@ class _HistoryPageState extends State<HistoryPage> {
     final data = await _getHistoryData(name);
     if (data == null || !mounted) return;
 
+    // ignore: no_leading_underscores_for_local_identifiers
     num _parseNum(dynamic value) {
       if (value == null) return 0;
       if (value is num) return value;
