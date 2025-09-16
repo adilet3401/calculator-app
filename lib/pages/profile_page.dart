@@ -16,11 +16,16 @@ class _ProfilePageState extends State<ProfilePage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.black,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
           'Выйти из аккаунта?',
           textAlign: TextAlign.center,
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+            color: Colors.white,
+          ),
         ),
         actionsAlignment: MainAxisAlignment.center,
         actions: [
@@ -28,7 +33,10 @@ class _ProfilePageState extends State<ProfilePage> {
             onPressed: () => Navigator.of(context).pop(),
             child: const Text(
               'Отмена',
-              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.orange,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
           ElevatedButton(
@@ -37,6 +45,9 @@ class _ProfilePageState extends State<ProfilePage> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
+              foregroundColor: Colors.white,
+              shadowColor: Colors.transparent,
+              elevation: 0,
             ),
             onPressed: () async {
               Navigator.of(context).pop();

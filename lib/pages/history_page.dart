@@ -68,11 +68,16 @@ class _HistoryPageState extends State<HistoryPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.black,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
           'Удалить этот расчет?',
           textAlign: TextAlign.center,
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+            color: Colors.white,
+          ),
         ),
         actionsAlignment: MainAxisAlignment.center,
         actions: [
@@ -80,7 +85,10 @@ class _HistoryPageState extends State<HistoryPage> {
             onPressed: () => Navigator.of(context).pop(),
             child: const Text(
               'Отмена',
-              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.orange,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
           ElevatedButton(
@@ -89,6 +97,9 @@ class _HistoryPageState extends State<HistoryPage> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
+              foregroundColor: Colors.white,
+              shadowColor: Colors.transparent,
+              elevation: 0,
             ),
             onPressed: () async {
               Navigator.of(context).pop(); // Закрываем диалог
