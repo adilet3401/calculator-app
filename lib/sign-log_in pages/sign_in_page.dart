@@ -20,26 +20,33 @@ class _SignInPageState extends State<SignInPage> {
   bool isLoading = false;
 
   Future<void> _signIn() async {
-    setState(() {
-      errorText = null;
-      isLoading = true;
-    });
+    if (isLoading) return;
+    if (mounted) {
+      setState(() {
+        errorText = null;
+        isLoading = true;
+      });
+    }
 
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
 
     if (email.isEmpty || !email.contains('@') || !email.contains('.')) {
-      setState(() {
-        errorText = 'Введите корректный email';
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          errorText = 'Введите корректный email';
+          isLoading = false;
+        });
+      }
       return;
     }
     if (password.isEmpty) {
-      setState(() {
-        errorText = 'Введите пароль';
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          errorText = 'Введите пароль';
+          isLoading = false;
+        });
+      }
       return;
     }
 
@@ -48,11 +55,12 @@ class _SignInPageState extends State<SignInPage> {
         email: email,
         password: password,
       );
-      Navigator.pushReplacement(
-        // ignore: use_build_context_synchronously
-        context,
-        MaterialPageRoute(builder: (context) => HomePage()),
-      );
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomePage()),
+        );
+      }
     } on FirebaseAuthException catch (e) {
       String message;
       switch (e.code) {
@@ -74,30 +82,40 @@ class _SignInPageState extends State<SignInPage> {
         default:
           message = 'Ошибка входа';
       }
-      setState(() {
-        errorText = message;
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          errorText = message;
+          isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        errorText = 'Произошла неизвестная ошибка';
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          errorText = 'Произошла неизвестная ошибка';
+          isLoading = false;
+        });
+      }
     }
   }
 
   Future<void> _signInAnonymously() async {
+    if (isLoading) return;
+    if (mounted) setState(() => isLoading = true);
     try {
       await FirebaseAuth.instance.signInAnonymously();
-      Navigator.pushReplacement(
-        // ignore: use_build_context_synchronously
-        context,
-        MaterialPageRoute(builder: (context) => HomePage()),
-      );
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomePage()),
+        );
+      }
     } catch (e) {
-      setState(() {
-        errorText = 'Не удалось войти как гость';
-      });
+      if (mounted) {
+        setState(() {
+          errorText = 'Не удалось войти как гость';
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -117,10 +135,10 @@ class _SignInPageState extends State<SignInPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Padding(
-              padding: EdgeInsets.only(bottom: 60, left: 260),
+              padding: const EdgeInsets.only(bottom: 60, left: 260),
               child: InkWell(
-                onTap: _signInAnonymously,
-                child: Text(
+                onTap: isLoading ? null : _signInAnonymously,
+                child: const Text(
                   'Пропустить',
                   style: TextStyle(
                     color: Colors.blue,
@@ -155,6 +173,7 @@ class _SignInPageState extends State<SignInPage> {
               borderRadius: BorderRadius.circular(24),
               minimumSize: const Size(double.infinity, 56),
               onPressed: isLoading ? null : _signIn,
+              isLoading: isLoading,
             ),
             const SizedBox(height: 20),
             Row(
@@ -173,7 +192,9 @@ class _SignInPageState extends State<SignInPage> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const RegisterPage()),
+                      MaterialPageRoute(
+                        builder: (context) => const RegisterPage(),
+                      ),
                     );
                   },
                   child: const Text(

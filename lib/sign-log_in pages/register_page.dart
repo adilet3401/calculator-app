@@ -100,7 +100,10 @@ class _RegisterPageState extends State<RegisterPage> {
       await Future.delayed(const Duration(seconds: 1));
 
       if (!mounted) return;
-      Navigator.pop(context);
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const SignInPage()),
+        (route) => false,
+      );
     } on FirebaseAuthException catch (e) {
       setState(() {
         errorText = e.code == 'weak-password'
@@ -143,7 +146,7 @@ class _RegisterPageState extends State<RegisterPage> {
             Padding(
               padding: const EdgeInsets.only(bottom: 60, left: 260),
               child: InkWell(
-                child: Text(
+                child: const Text(
                   'Пропустить',
                   style: TextStyle(
                     color: Colors.blue,
@@ -152,9 +155,9 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                 ),
                 onTap: () {
-                  Navigator.push(
-                    context,
+                  Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (context) => const SignInPage()),
+                    (route) => false,
                   );
                 },
               ),

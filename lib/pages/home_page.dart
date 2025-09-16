@@ -30,7 +30,7 @@ class _HomePageState extends State<HomePage> {
     Colors.white, // TnvedPage
     Colors.black, // CalculatorPage
     Colors.black, // HistoryPage
-    Color(0xFFF0ECE9), // ProfilePage
+    ?Colors.grey[900], // ProfilePage
   ];
 
   @override

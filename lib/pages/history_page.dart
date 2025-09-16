@@ -12,7 +12,6 @@ class HistoryPage extends StatefulWidget {
 
 class _HistoryPageState extends State<HistoryPage> {
   List<String> historyNames = [];
-  Map<String, dynamic>? selectedData;
   final numberFormatter = NumberFormat.decimalPattern('ru');
 
   @override
@@ -34,13 +33,12 @@ class _HistoryPageState extends State<HistoryPage> {
 
     setState(() {
       historyNames = snapshot.docs.map((doc) => doc.id).toList();
-      selectedData = null;
     });
   }
 
-  Future<void> _viewDataFirebase(String name) async {
+  Future<Map<String, dynamic>?> _getHistoryData(String name) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
+    if (uid == null) return null;
 
     final doc = await FirebaseFirestore.instance
         .collection('users')
@@ -49,11 +47,7 @@ class _HistoryPageState extends State<HistoryPage> {
         .doc(name)
         .get();
 
-    if (doc.exists) {
-      setState(() {
-        selectedData = doc.data();
-      });
-    }
+    return doc.exists ? doc.data() : null;
   }
 
   Future<void> _deleteHistoryItem(String name) async {
@@ -74,7 +68,6 @@ class _HistoryPageState extends State<HistoryPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        // backgroundColor: Colors.grey.shade700,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
           'Удалить этот расчет?',
@@ -98,10 +91,8 @@ class _HistoryPageState extends State<HistoryPage> {
               ),
             ),
             onPressed: () async {
-              if (mounted) {
-                Navigator.of(context).pop(); // Сначала закрываем диалог
-              }
-              await _deleteHistoryItem(name); // Потом удаляем
+              Navigator.of(context).pop(); // Закрываем диалог
+              await _deleteHistoryItem(name); // Удаляем один раз
             },
             child: const Text(
               'Удалить',
@@ -113,6 +104,140 @@ class _HistoryPageState extends State<HistoryPage> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showDataBottomSheet(String name) async {
+    final data = await _getHistoryData(name);
+    if (data == null || !mounted) return;
+
+    num _parseNum(dynamic value) {
+      if (value == null) return 0;
+      if (value is num) return value;
+      if (value is String) {
+        return num.tryParse(value.replaceAll(' ', '')) ?? 0;
+      }
+      return 0;
+    }
+
+    String formatResultText(String text) {
+      // Форматировать числа длиной 4 и более: 1000 -> 1 000
+      return text.replaceAllMapped(RegExp(r'(\d{4,})'), (match) {
+        final raw = match.group(0)!.replaceAll(' ', '');
+        final numValue = int.tryParse(raw);
+        if (numValue == null) return match.group(0)!;
+        // Форматировать с пробелом после каждой группы из 3 цифр
+        final str = numValue.toString();
+        final buffer = StringBuffer();
+        for (int i = 0; i < str.length; i++) {
+          if (i != 0 && (str.length - i) % 3 == 0) buffer.write(' ');
+          buffer.write(str[i]);
+        }
+        return buffer.toString();
+      });
+    }
+
+    final resultText = formatResultText(data["result"]?.toString() ?? "");
+    final price = numberFormatter.format(_parseNum(data["price"]));
+    final dutyPercent = numberFormatter.format(_parseNum(data["duty"]));
+    final vatPercent = numberFormatter.format(_parseNum(data["nds"]));
+    final feePercent = numberFormatter.format(_parseNum(data["fee"]));
+    final shipping = numberFormatter.format(_parseNum(data["freight"]));
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return _AnimatedBottomSheet(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade900,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('', style: TextStyle(fontSize: 18)),
+                    const Text(
+                      'Отчет',
+                      style: TextStyle(
+                        color: Colors.orange,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.orange),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  resultText,
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                ),
+                const Divider(color: Colors.orange, thickness: 1, height: 24),
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.orange, width: 0.5),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Стоимость: $price',
+                        style: const TextStyle(
+                          color: Colors.orange,
+                          fontSize: 15,
+                        ),
+                      ),
+                      Text(
+                        'Пошлина: $dutyPercent%',
+                        style: const TextStyle(
+                          color: Colors.orange,
+                          fontSize: 15,
+                        ),
+                      ),
+                      Text(
+                        'НДС: $vatPercent%',
+                        style: const TextStyle(
+                          color: Colors.orange,
+                          fontSize: 15,
+                        ),
+                      ),
+                      Text(
+                        'Сбор: $feePercent%',
+                        style: const TextStyle(
+                          color: Colors.orange,
+                          fontSize: 15,
+                        ),
+                      ),
+                      Text(
+                        'Доставка/страховка: $shipping',
+                        style: const TextStyle(
+                          color: Colors.orange,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -186,12 +311,7 @@ class _HistoryPageState extends State<HistoryPage> {
                           color: Colors.orange,
                           size: 18,
                         ),
-                        onTap: () async {
-                          await _viewDataFirebase(name);
-                          if (selectedData != null) {
-                            // здесь можно вызвать ваш bottom sheet
-                          }
-                        },
+                        onTap: () => _showDataBottomSheet(name),
                         onLongPress: () => _confirmDelete(name),
                       ),
                     );
@@ -199,6 +319,58 @@ class _HistoryPageState extends State<HistoryPage> {
                 ),
         ),
       ),
+    );
+  }
+}
+
+/// Виджет анимации выезда снизу
+class _AnimatedBottomSheet extends StatefulWidget {
+  final Widget child;
+  const _AnimatedBottomSheet({required this.child});
+
+  @override
+  State<_AnimatedBottomSheet> createState() => _AnimatedBottomSheetState();
+}
+
+class _AnimatedBottomSheetState extends State<_AnimatedBottomSheet>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _opacity;
+  late Animation<Offset> _offset;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
+
+    _opacity = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+
+    _offset = Tween<Offset>(
+      begin: const Offset(0, 0.1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.reverse(); // плавное исчезновение при закрытии
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _opacity,
+      child: SlideTransition(position: _offset, child: widget.child),
     );
   }
 }

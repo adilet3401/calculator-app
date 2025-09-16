@@ -172,6 +172,18 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
 
     return Scaffold(
       backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        title: const Text(
+          "Растаможка",
+          style: TextStyle(
+            color: Colors.orange,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        centerTitle: true,
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -247,8 +259,8 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
                       backgroundColor: (saveButtonText == "Сохранено")
                           ? Colors.green
                           : (!isSaveEnabled || isSaving)
-                              ? Colors.grey
-                              : Colors.green,
+                          ? Colors.grey
+                          : Colors.green,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 40,
                         vertical: 14,
