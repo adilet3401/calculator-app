@@ -243,7 +243,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   backgroundImage: userData!['avatarUrl'] != null
                       ? NetworkImage(userData!['avatarUrl'])
                       : const AssetImage(
-                              'assets/default-avatar-icon-of-social-media-user-vector.jpg',
+                              'assets/images/default-avatar-icon-of-social-media-user-vector.jpg',
                             )
                             as ImageProvider,
                 ),

@@ -11,7 +11,6 @@ class RastamozhkaPage extends StatefulWidget {
 }
 
 class _RastamozhkaPageState extends State<RastamozhkaPage> {
-  final nameController = TextEditingController();
   final priceController = TextEditingController();
   final dutyController = TextEditingController(text: "10");
   final ndsController = TextEditingController(text: "12");
@@ -21,41 +20,119 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
   bool includeFeeInVatBase = false;
   bool roundEachStep = true;
   bool hasCalculated = false;
-  bool isSaveEnabled = false;
   bool isSaving = false;
-
   String rastamozhkaResult = "";
-  String saveButtonText = "Сохранить";
 
-  Future<void> saveToHistoryFirebase() async {
+  Future<void> _showSaveBottomSheet() async {
+    final nameController = TextEditingController();
+    final tnvEdController = TextEditingController();
+    final companyController = TextEditingController();
+    final senderCountryController = TextEditingController(text: "Китай");
+    final receiverCountryController = TextEditingController(
+      text: "Кыргызстан, Бишкек",
+    );
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.black,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 20,
+            right: 20,
+            top: 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildBottomSheetField(
+                Icons.label,
+                "Наименование товара",
+                nameController,
+              ),
+              _buildBottomSheetField(
+                Icons.numbers,
+                "ТНВЭД код",
+                tnvEdController,
+              ),
+              _buildBottomSheetField(
+                Icons.business,
+                "Имя / Компания",
+                companyController,
+              ),
+              _buildBottomSheetField(
+                Icons.flag,
+                "Страна отправитель",
+                senderCountryController,
+              ),
+              _buildBottomSheetField(
+                Icons.flag,
+                "Страна получатель",
+                receiverCountryController,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await saveToHistoryFirebase(
+                    name: nameController.text,
+                    tnvEd: tnvEdController.text,
+                    company: companyController.text,
+                    route: '',
+                    senderCountry: senderCountryController.text,
+                    receiverCountry: receiverCountryController.text,
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  maximumSize: const Size(150, 100),
+                  minimumSize: const Size(100, 50),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  "Сохранить",
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> saveToHistoryFirebase({
+    required String name,
+    required String tnvEd,
+    required String company,
+    required String route,
+    required String senderCountry,
+    required String receiverCountry,
+  }) async {
     setState(() {
       isSaving = true;
-      saveButtonText = "Сохранение...";
     });
 
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    final name = nameController.text.trim();
-
     if (uid == null) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Ошибка авторизации')));
       setState(() {
         isSaving = false;
-        saveButtonText = "Сохранить";
-      });
-      return;
-    }
-
-    if (name.isEmpty || !RegExp(r'^\d+$').hasMatch(name)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Введите числовой код в поле "Наименование"'),
-        ),
-      );
-      setState(() {
-        isSaving = false;
-        saveButtonText = "Сохранить";
       });
       return;
     }
@@ -69,7 +146,13 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
       'includeFeeInVatBase': includeFeeInVatBase,
       'roundEachStep': roundEachStep,
       'result': rastamozhkaResult,
-      'timestamp': DateTime.now().millisecondsSinceEpoch,
+      'name': name,
+      'tnved': tnvEd,
+      'company': company,
+      'route': route,
+      'senderCountry': senderCountry,
+      'receiverCountry': receiverCountry,
+      'timestamp': DateTime.now().toIso8601String(),
     };
 
     try {
@@ -77,55 +160,25 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
           .collection('users')
           .doc(uid)
           .collection('history')
-          .doc(name)
-          .set(data);
+          .add(data);
 
       setState(() {
-        saveButtonText = "Сохранено";
         isSaving = false;
       });
 
-      await Future.delayed(const Duration(seconds: 2));
-      if (mounted) {
-        setState(() {
-          saveButtonText = "Сохранить";
-        });
-      }
+      ScaffoldMessenger.of(
+        // ignore: use_build_context_synchronously
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Сохранено успешно!')));
     } catch (e) {
-      // ignore: use_build_context_synchronously
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Ошибка сохранения: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      ScaffoldMessenger.of(
+        // ignore: use_build_context_synchronously
+        context,
+      ).showSnackBar(SnackBar(content: Text('Ошибка сохранения: $e')));
       setState(() {
-        saveButtonText = "Сохранить";
         isSaving = false;
       });
     }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    nameController.addListener(() {
-      final text = nameController.text.trim();
-      setState(() {
-        isSaveEnabled = text.isNotEmpty && RegExp(r'^\d+$').hasMatch(text);
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    nameController.dispose();
-    priceController.dispose();
-    dutyController.dispose();
-    ndsController.dispose();
-    feeController.dispose();
-    freightController.dispose();
-    super.dispose();
   }
 
   void calculateRastamozhka() {
@@ -145,23 +198,15 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
     final freight = double.tryParse(freightController.text) ?? 0;
 
     int dutySum = (price * dutyPercent / 100).round();
-    if (roundEachStep) dutySum = dutySum.round();
-
     int feeSum = (price * feePercent / 100).round();
-    if (roundEachStep) feeSum = feeSum.round();
-
     double vatBase = price + dutySum + freight;
     if (includeFeeInVatBase) vatBase += feeSum;
-
     int ndsSum = (vatBase * ndsPercent / 100).round();
-    if (roundEachStep) ndsSum = ndsSum.round();
-
     int total = dutySum + ndsSum + feeSum;
 
     setState(() {
       rastamozhkaResult =
           "Пошлина: $dutySum сом\nНДС: $ndsSum сом\nТаможенный сбор: $feeSum сом\n----------------------\nИтого: $total сом";
-      saveButtonText = "Сохранить";
       hasCalculated = true;
     });
   }
@@ -176,11 +221,7 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
         backgroundColor: Colors.black,
         title: const Text(
           "Растаможка",
-          style: TextStyle(
-            color: Colors.orange,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
+          style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
@@ -190,7 +231,6 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildField("Наименование", nameController, isName: true),
               _buildField("Стоимость товара", priceController),
               Row(
                 children: [
@@ -211,7 +251,6 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
               _toggle(
                 title: "Включать сбор в базу НДС",
                 value: includeFeeInVatBase,
@@ -222,108 +261,72 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
                 value: roundEachStep,
                 onChanged: (v) => setState(() => roundEachStep = v),
               ),
-              const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: calculateRastamozhka,
                 style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(90, 50),
                   backgroundColor: Colors.orange,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 40,
-                    vertical: 14,
-                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  maximumSize: const Size(double.infinity, 56),
                 ),
                 child: const Text(
                   "Рассчитать",
                   style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
                     color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
-
-              // --- Кнопка "Сохранить" + результат ---
               if (hasCalculated) ...[
                 const SizedBox(height: 16),
                 if (!isGuest)
                   ElevatedButton(
-                    onPressed: () {
-                      if (isSaveEnabled && !isSaving) {
-                        saveToHistoryFirebase();
-                      }
-                    },
+                    onPressed: _showSaveBottomSheet,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: (saveButtonText == "Сохранено")
-                          ? Colors.green
-                          : (!isSaveEnabled || isSaving)
-                          ? Colors.grey
-                          : Colors.green,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 40,
-                        vertical: 14,
-                      ),
+                      minimumSize: const Size(90, 50),
+                      backgroundColor: Colors.green,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
+                      maximumSize: const Size(double.infinity, 56),
                     ),
                     child: isSaving
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text(
+                            "Сохранить",
+                            style: TextStyle(
                               color: Colors.white,
-                              strokeWidth: 2,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
                             ),
-                          )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                saveButtonText,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              if (saveButtonText == "Сохранено") ...[
-                                const SizedBox(width: 8),
-                                const Icon(Icons.check, color: Colors.white),
-                              ],
-                            ],
                           ),
                   )
                 else
-                  Text(
+                  const Text(
                     "Вы зашли как гость. Чтобы сохранять историю — зарегистрируйтесь",
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.orange,
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                if (rastamozhkaResult.isNotEmpty)
-                  Container(
-                    width: double.infinity,
-                    color: Colors.black,
-                    margin: const EdgeInsets.only(top: 16),
-                    padding: const EdgeInsets.all(20),
-                    child: Text(
-                      rastamozhkaResult,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'RobotoMono',
-                        letterSpacing: 1,
-                      ),
+                Container(
+                  margin: const EdgeInsets.only(top: 16),
+                  padding: const EdgeInsets.all(20),
+                  color: Colors.black,
+                  child: Text(
+                    rastamozhkaResult,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'RobotoMono',
                     ),
                   ),
+                ),
               ],
             ],
           ),
@@ -332,11 +335,34 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
     );
   }
 
-  Widget _buildField(
-    String label,
-    TextEditingController controller, {
-    bool isName = false,
-  }) {
+  Widget _buildBottomSheetField(
+    IconData icon,
+    String hint,
+    TextEditingController controller,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: controller,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          prefixIcon: Icon(icon, color: Colors.orange),
+          hintText: hint,
+          hintStyle: const TextStyle(color: Colors.orange),
+          enabledBorder: OutlineInputBorder(
+            borderSide: const BorderSide(color: Colors.orange),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderSide: const BorderSide(color: Colors.orange, width: 2),
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildField(String label, TextEditingController controller) {
     final isPrice = label == "Стоимость товара";
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -344,27 +370,19 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
         controller: controller,
         keyboardType: TextInputType.number,
         inputFormatters: [
-          if (isName) FilteringTextInputFormatter.digitsOnly,
-          if (!isName)
-            FilteringTextInputFormatter.allow(RegExp(r'[0-9\.\,\s]')),
+          FilteringTextInputFormatter.allow(RegExp(r'[0-9\.\,\s]')),
           if (isPrice) ThousandsFormatter(),
         ],
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-        ),
+        style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(
-            color: Colors.orange,
-            fontWeight: FontWeight.bold,
-          ),
+          labelStyle: const TextStyle(color: Colors.orange),
           enabledBorder: OutlineInputBorder(
             borderSide: const BorderSide(color: Colors.orange),
             borderRadius: BorderRadius.circular(12),
           ),
           focusedBorder: OutlineInputBorder(
-            borderSide: const BorderSide(color: Colors.orange, width: 2.5),
+            borderSide: const BorderSide(color: Colors.orange, width: 2),
             borderRadius: BorderRadius.circular(20),
           ),
         ),
@@ -378,19 +396,10 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
     required ValueChanged<bool> onChanged,
   }) {
     return SwitchListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(
-        title,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
+      title: Text(title, style: const TextStyle(color: Colors.white)),
       value: value,
       onChanged: onChanged,
-      activeThumbColor: Colors.white,
       activeTrackColor: Colors.orange,
-      inactiveThumbColor: Colors.grey,
       inactiveTrackColor: Colors.grey[700],
     );
   }

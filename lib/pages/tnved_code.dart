@@ -48,11 +48,7 @@ class _TnvedPageState extends State<TnvedPage>
           },
         ),
       )
-      ..loadRequest(
-        Uri.parse(
-          'https://www.customs.gov.kg/site/ru/master/customskg/tehi-tn-bojuncha-tovarlardyn-klassifikacijasy',
-        ),
-      );
+      ..loadRequest(Uri.parse('https://tnved.info'));
   }
 
   @override

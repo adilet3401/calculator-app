@@ -1,7 +1,14 @@
+import 'package:calculator/widgets/pdf.dart' as pw;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+// import 'package:pdf/widgets.dart' as pw;
+
+// import 'pdf_report.dart'; // файл, где находится PdfReport
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -11,7 +18,7 @@ class HistoryPage extends StatefulWidget {
 }
 
 class _HistoryPageState extends State<HistoryPage> {
-  List<String> historyNames = [];
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> historyDocs = [];
   final numberFormatter = NumberFormat.decimalPattern('ru');
 
   @override
@@ -32,25 +39,12 @@ class _HistoryPageState extends State<HistoryPage> {
         .get();
 
     setState(() {
-      historyNames = snapshot.docs.map((doc) => doc.id).toList();
+      historyDocs = snapshot.docs
+          .cast<QueryDocumentSnapshot<Map<String, dynamic>>>();
     });
   }
 
-  Future<Map<String, dynamic>?> _getHistoryData(String name) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return null;
-
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('history')
-        .doc(name)
-        .get();
-
-    return doc.exists ? doc.data() : null;
-  }
-
-  Future<void> _deleteHistoryItem(String name) async {
+  Future<void> _deleteHistoryItem(String docId) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
@@ -58,13 +52,13 @@ class _HistoryPageState extends State<HistoryPage> {
         .collection('users')
         .doc(uid)
         .collection('history')
-        .doc(name)
+        .doc(docId)
         .delete();
 
     await _loadHistoryFirebase();
   }
 
-  void _confirmDelete(String name) {
+  void _confirmDelete(String docId) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -102,8 +96,8 @@ class _HistoryPageState extends State<HistoryPage> {
               elevation: 0,
             ),
             onPressed: () async {
-              Navigator.of(context).pop(); // Закрываем диалог
-              await _deleteHistoryItem(name); // Удаляем один раз
+              Navigator.of(context).pop();
+              await _deleteHistoryItem(docId);
             },
             child: const Text(
               'Удалить',
@@ -118,128 +112,236 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
-  void _showDataBottomSheet(String name) async {
-    final data = await _getHistoryData(name);
-    if (data == null || !mounted) return;
+  void _showDataPage(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data();
 
-    // ignore: no_leading_underscores_for_local_identifiers
     num _parseNum(dynamic value) {
       if (value == null) return 0;
       if (value is num) return value;
       if (value is String) {
-        return num.tryParse(value.replaceAll(' ', '')) ?? 0;
+        final s = value.replaceAll(' ', '').replaceAll(',', '.');
+        return num.tryParse(s) ?? 0;
       }
       return 0;
     }
 
+    DateTime _parseTimestamp(dynamic ts) {
+      if (ts == null) return DateTime.now();
+      if (ts is int) return DateTime.fromMillisecondsSinceEpoch(ts);
+      if (ts is String) {
+        try {
+          return DateTime.parse(ts);
+        } catch (_) {
+          final digits = int.tryParse(ts);
+          if (digits != null)
+            return DateTime.fromMillisecondsSinceEpoch(digits);
+        }
+      }
+      if (ts is Timestamp) return ts.toDate();
+      return DateTime.now();
+    }
+
     String formatResultText(String text) {
-      // Форматировать числа длиной 4 и более: 1000 -> 1 000
       return text.replaceAllMapped(RegExp(r'(\d{4,})'), (match) {
         final raw = match.group(0)!.replaceAll(' ', '');
         final numValue = int.tryParse(raw);
         if (numValue == null) return match.group(0)!;
-        // Форматировать с пробелом после каждой группы из 3 цифр
-        final str = numValue.toString();
-        final buffer = StringBuffer();
-        for (int i = 0; i < str.length; i++) {
-          if (i != 0 && (str.length - i) % 3 == 0) buffer.write(' ');
-          buffer.write(str[i]);
-        }
-        return buffer.toString();
+        return numberFormatter.format(numValue);
       });
     }
 
-    final resultText = formatResultText(data["result"]?.toString() ?? "");
-    final price = numberFormatter.format(_parseNum(data["price"]));
-    final dutyPercent = numberFormatter.format(_parseNum(data["duty"]));
-    final vatPercent = numberFormatter.format(_parseNum(data["nds"]));
-    final feePercent = numberFormatter.format(_parseNum(data["fee"]));
-    final shipping = numberFormatter.format(_parseNum(data["freight"]));
+    final resultText = formatResultText((data['result'] ?? '').toString());
+    final priceNum = _parseNum(data['price']);
+    final dutyPercentNum = _parseNum(data['duty']);
+    final ndsPercentNum = _parseNum(data['nds']);
+    final feePercentNum = _parseNum(data['fee']);
+    final savedAt = _parseTimestamp(data['timestamp']);
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return _AnimatedBottomSheet(
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade900,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    final displayPrice = priceNum == 0 ? '-' : numberFormatter.format(priceNum);
+    final displayDutyPercent = dutyPercentNum == 0
+        ? '-'
+        : dutyPercentNum.toString();
+    final displayNdsPercent = ndsPercentNum == 0
+        ? '-'
+        : ndsPercentNum.toString();
+    final displayFeePercent = feePercentNum == 0
+        ? '-'
+        : feePercentNum.toString();
+
+    final itemName = (data['name'] ?? '').toString();
+    final tnved = (data['tnved'] ?? data['tnvEd'] ?? '').toString();
+    final company = (data['company'] ?? '').toString();
+    final senderCountry = (data['senderCountry'] ?? '').toString();
+    final receiverCountry = (data['receiverCountry'] ?? '').toString();
+    final savedAtStr = DateFormat('dd.MM.yyyy HH:mm').format(savedAt);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            elevation: 0,
+            title: const Text(
+              'Отчет',
+              style: TextStyle(
+                color: Colors.orange,
+                fontWeight: FontWeight.bold,
+              ),
             ),
+            centerTitle: true,
+            iconTheme: const IconThemeData(color: Colors.orange),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.share, color: Colors.orange),
+                onPressed: () async {
+                  final pdf = await pw.PdfReport.build(
+                    itemName: itemName,
+                    tnved: tnved,
+                    company: company,
+                    senderCountry: senderCountry,
+                    receiverCountry: receiverCountry,
+                    savedAtStr: savedAtStr,
+                    displayPrice: displayPrice,
+                    displayDutyPercent: displayDutyPercent,
+                    displayNdsPercent: displayNdsPercent,
+                    displayFeePercent: displayFeePercent,
+                    resultText: resultText,
+                    dutySum: '',
+                    ndsSum: '',
+                    feeSum: '',
+                  );
+                  final output = await getTemporaryDirectory();
+                  final file = File('${output.path}/report.pdf');
+                  await file.writeAsBytes(await pdf.save());
+                  await Share.shareXFiles([
+                    XFile(file.path),
+                  ], text: 'PDF отчет по расчету');
+                },
+              ),
+            ],
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('', style: TextStyle(fontSize: 18)),
-                    const Text(
-                      'Отчет',
-                      style: TextStyle(
-                        color: Colors.orange,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.orange),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  resultText,
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                ),
-                const Divider(color: Colors.orange, thickness: 1, height: 24),
                 Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.symmetric(vertical: 8),
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.orange, width: 0.5),
-                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.grey.shade900,
+                    border: Border.all(color: Colors.orange, width: 0.6),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   padding: const EdgeInsets.all(12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Стоимость: $price',
-                        style: const TextStyle(
-                          color: Colors.orange,
-                          fontSize: 15,
-                        ),
+                      _buildResultRow(
+                        Icons.label,
+                        'Наименование',
+                        itemName.isEmpty ? '-' : itemName,
                       ),
-                      Text(
-                        'Пошлина: $dutyPercent%',
-                        style: const TextStyle(
-                          color: Colors.orange,
-                          fontSize: 15,
-                        ),
+                      _buildResultRow(
+                        Icons.numbers,
+                        'ТНВЭД код',
+                        tnved.isEmpty ? '-' : tnved,
                       ),
-                      Text(
-                        'НДС: $vatPercent%',
-                        style: const TextStyle(
-                          color: Colors.orange,
-                          fontSize: 15,
-                        ),
+                      _buildResultRow(
+                        Icons.business,
+                        'Имя/Компания',
+                        company.isEmpty ? '-' : company,
                       ),
-                      Text(
-                        'Сбор: $feePercent%',
-                        style: const TextStyle(
-                          color: Colors.orange,
-                          fontSize: 15,
-                        ),
+                      _buildResultRow(
+                        Icons.flag,
+                        'Страна отправитель',
+                        senderCountry.isEmpty ? '-' : senderCountry,
                       ),
-                      Text(
-                        'Доставка/страховка: $shipping',
-                        style: const TextStyle(
-                          color: Colors.orange,
-                          fontSize: 15,
+                      _buildResultRow(
+                        Icons.flag,
+                        'Страна получатель',
+                        receiverCountry.isEmpty ? '-' : receiverCountry,
+                      ),
+                      _buildResultRow(
+                        Icons.calendar_today,
+                        'Сохранено',
+                        savedAtStr,
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(color: Colors.orange, thickness: 1),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade900,
+                    border: Border.all(color: Colors.orange, width: 0.6),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (resultText.isEmpty)
+                        const Text(
+                          'Нет результатов',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      else ...[
+                        _buildResultRow(Icons.calculate, 'Итого', resultText),
+                        const Divider(color: Colors.orange, thickness: 0.5),
+                        _buildResultRow(
+                          Icons.attach_money,
+                          'Стоимость',
+                          '$displayPrice сом',
+                        ),
+                        _buildResultRow(
+                          Icons.percent,
+                          'Пошлина',
+                          '$displayDutyPercent %',
+                        ),
+                        _buildResultRow(
+                          Icons.percent,
+                          'НДС',
+                          '$displayNdsPercent %',
+                        ),
+                        _buildResultRow(
+                          Icons.percent,
+                          'Таможенный сбор',
+                          '$displayFeePercent %',
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                SizedBox(height: 24),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    foregroundColor: Colors.black,
+                    shadowColor: Colors.transparent,
+                    elevation: 0,
+                  ),
+                  onPressed: () {},
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.picture_as_pdf_rounded,
+                        color: Colors.black,
+                      ),
+                      SizedBox(width: 8),
+                      const Text(
+                        'Отправить',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],
@@ -248,8 +350,34 @@ class _HistoryPageState extends State<HistoryPage> {
               ],
             ),
           ),
-        );
-      },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResultRow(IconData icon, String title, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.orange, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(color: Colors.white70, fontSize: 15),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -276,25 +404,28 @@ class _HistoryPageState extends State<HistoryPage> {
         child: RefreshIndicator(
           color: Colors.orange,
           onRefresh: _loadHistoryFirebase,
-          child: historyNames.isEmpty
+          child: historyDocs.isEmpty
               ? ListView(
                   children: const [
-                    SizedBox(
-                      height: 300,
-                      child: Center(
-                        child: Text(
-                          'История пуста',
-                          style: TextStyle(color: Colors.grey, fontSize: 18),
-                        ),
+                    SizedBox(height: 300),
+                    Center(
+                      child: Text(
+                        'История пуста',
+                        style: TextStyle(color: Colors.grey, fontSize: 18),
                       ),
                     ),
                   ],
                 )
               : ListView.builder(
-                  itemCount: historyNames.length,
-                  padding: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.only(bottom: 16, top: 8),
+                  itemCount: historyDocs.length,
                   itemBuilder: (context, index) {
-                    final name = historyNames[index];
+                    final doc = historyDocs[index];
+                    final data = doc.data();
+                    final displayTitle =
+                        (data['name'] ?? '').toString().isNotEmpty
+                        ? data['name'].toString()
+                        : doc.id;
                     return Card(
                       color: Colors.grey[900],
                       elevation: 3,
@@ -311,7 +442,7 @@ class _HistoryPageState extends State<HistoryPage> {
                           vertical: 12,
                         ),
                         title: Text(
-                          name,
+                          displayTitle,
                           style: const TextStyle(
                             color: Colors.orange,
                             fontWeight: FontWeight.bold,
@@ -323,66 +454,14 @@ class _HistoryPageState extends State<HistoryPage> {
                           color: Colors.orange,
                           size: 18,
                         ),
-                        onTap: () => _showDataBottomSheet(name),
-                        onLongPress: () => _confirmDelete(name),
+                        onTap: () => _showDataPage(doc),
+                        onLongPress: () => _confirmDelete(doc.id),
                       ),
                     );
                   },
                 ),
         ),
       ),
-    );
-  }
-}
-
-/// Виджет анимации выезда снизу
-class _AnimatedBottomSheet extends StatefulWidget {
-  final Widget child;
-  const _AnimatedBottomSheet({required this.child});
-
-  @override
-  State<_AnimatedBottomSheet> createState() => _AnimatedBottomSheetState();
-}
-
-class _AnimatedBottomSheetState extends State<_AnimatedBottomSheet>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _opacity;
-  late Animation<Offset> _offset;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 250),
-    );
-
-    _opacity = Tween<double>(
-      begin: 0,
-      end: 1,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-
-    _offset = Tween<Offset>(
-      begin: const Offset(0, 0.1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
-
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.reverse(); // плавное исчезновение при закрытии
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _opacity,
-      child: SlideTransition(position: _offset, child: widget.child),
     );
   }
 }

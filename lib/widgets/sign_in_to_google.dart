@@ -37,7 +37,11 @@ class _ButtonSignInToGoogleState extends State<ButtonSignInToGoogle> {
           : Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Image.asset('assets/Group 49.png', width: 20, height: 20),
+                Image.asset(
+                  'assets/images/Group 49.png',
+                  width: 20,
+                  height: 20,
+                ),
                 const SizedBox(width: 10),
                 const Text(
                   'Google',

@@ -1,6 +1,6 @@
-import 'package:calculator/pages/download_page.dart';
 import 'package:calculator/pages/history_page.dart';
 import 'package:calculator/pages/home_page.dart';
+import 'package:calculator/sign-log_in%20pages/sign_in_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -32,7 +32,7 @@ void main() async {
     print('Ошибка Firestore: $e');
   }
 
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -42,7 +42,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: DownloadPage(), // Исправлено: передаем только виджет
+      home: SignInPage(), // Исправлено: передаем только виджет
       routes: {
         '/home': (context) => HomePage(),
         '/history': (context) => HistoryPage(),
