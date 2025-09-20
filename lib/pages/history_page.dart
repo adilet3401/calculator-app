@@ -1,4 +1,5 @@
-import 'package:calculator/widgets/pdf.dart' as pw;
+import 'package:calculator/pages/pdf_preview_page.dart';
+import 'package:calculator/pages/pdf_report.dart' as pw;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -193,33 +194,33 @@ class _HistoryPageState extends State<HistoryPage> {
             centerTitle: true,
             iconTheme: const IconThemeData(color: Colors.orange),
             actions: [
-              IconButton(
-                icon: const Icon(Icons.share, color: Colors.orange),
-                onPressed: () async {
-                  final pdf = await pw.PdfReport.build(
-                    itemName: itemName,
-                    tnved: tnved,
-                    company: company,
-                    senderCountry: senderCountry,
-                    receiverCountry: receiverCountry,
-                    savedAtStr: savedAtStr,
-                    displayPrice: displayPrice,
-                    displayDutyPercent: displayDutyPercent,
-                    displayNdsPercent: displayNdsPercent,
-                    displayFeePercent: displayFeePercent,
-                    resultText: resultText,
-                    dutySum: '',
-                    ndsSum: '',
-                    feeSum: '',
-                  );
-                  final output = await getTemporaryDirectory();
-                  final file = File('${output.path}/report.pdf');
-                  await file.writeAsBytes(await pdf.save());
-                  await Share.shareXFiles([
-                    XFile(file.path),
-                  ], text: 'PDF отчет по расчету');
-                },
-              ),
+              // IconButton(
+              //   icon: const Icon(Icons.share, color: Colors.orange),
+              //   onPressed: () async {
+              //     final pdf = await pw.PdfReport.build(
+              //       itemName: itemName,
+              //       tnved: tnved,
+              //       company: company,
+              //       senderCountry: senderCountry,
+              //       receiverCountry: receiverCountry,
+              //       savedAtStr: savedAtStr,
+              //       displayPrice: displayPrice,
+              //       displayDutyPercent: displayDutyPercent,
+              //       displayNdsPercent: displayNdsPercent,
+              //       displayFeePercent: displayFeePercent,
+              //       resultText: resultText,
+              //       dutySum: '',
+              //       ndsSum: '',
+              //       feeSum: '',
+              //     );
+              //     final output = await getTemporaryDirectory();
+              //     final file = File('${output.path}/report.pdf');
+              //     await file.writeAsBytes(await pdf.save());
+              //     await Share.shareXFiles([
+              //       XFile(file.path),
+              //     ], text: 'PDF отчет по расчету');
+              //   },
+              // ),
             ],
           ),
           body: SingleChildScrollView(
@@ -270,7 +271,7 @@ class _HistoryPageState extends State<HistoryPage> {
                     ],
                   ),
                 ),
-                const Divider(color: Colors.orange, thickness: 1),
+                SizedBox(height: 10),
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.grey.shade900,
@@ -291,8 +292,7 @@ class _HistoryPageState extends State<HistoryPage> {
                           ),
                         )
                       else ...[
-                        _buildResultRow(Icons.calculate, 'Итого', resultText),
-                        const Divider(color: Colors.orange, thickness: 0.5),
+                        // const Divider(color: Colors.orange, thickness: 0.5),
                         _buildResultRow(
                           Icons.attach_money,
                           'Стоимость',
@@ -313,6 +313,10 @@ class _HistoryPageState extends State<HistoryPage> {
                           'Таможенный сбор',
                           '$displayFeePercent %',
                         ),
+                        SizedBox(height: 10),
+                        Divider(color: Colors.orange, thickness: 0.6),
+                        SizedBox(height: 10),
+                        _buildResultRow(Icons.calculate, 'Итого', resultText),
                       ],
                     ],
                   ),
@@ -325,19 +329,39 @@ class _HistoryPageState extends State<HistoryPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     foregroundColor: Colors.black,
-                    shadowColor: Colors.transparent,
                     elevation: 0,
                   ),
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PdfPreviewPage(
+                          reportData: pw.PdfReportData(
+                            itemName: itemName,
+                            tnved: tnved,
+                            company: company,
+                            senderCountry: senderCountry,
+                            receiverCountry: receiverCountry,
+                            savedAtStr: savedAtStr,
+                            displayPrice: displayPrice,
+                            displayDutyPercent: displayDutyPercent,
+                            displayNdsPercent: displayNdsPercent,
+                            displayFeePercent: displayFeePercent,
+                            resultText: resultText,
+                            dutySum: '',
+                            ndsSum: '',
+                            feeSum: '',
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.picture_as_pdf_rounded,
-                        color: Colors.black,
-                      ),
+                    children: const [
+                      Icon(Icons.picture_as_pdf_rounded, color: Colors.black),
                       SizedBox(width: 8),
-                      const Text(
+                      Text(
                         'Отправить',
                         style: TextStyle(
                           color: Colors.black,
