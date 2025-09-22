@@ -1,10 +1,11 @@
 import 'package:calculator/pages/home_page.dart';
 import 'package:calculator/sign-log_in%20pages/register_page.dart';
-import 'package:calculator/widgets/sign_in_to_google.dart';
+// import 'package:calculator/widgets/sign_in_to_google.dart';
 import 'package:calculator/widgets/email_phone_name_edit_line.dart';
 import 'package:calculator/widgets/navigate_button.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
@@ -19,6 +20,7 @@ class _SignInPageState extends State<SignInPage> {
   String? errorText;
   bool isLoading = false;
 
+  /// 🔑 Вход через Email + Password
   Future<void> _signIn() async {
     if (isLoading) return;
     if (mounted) {
@@ -55,10 +57,15 @@ class _SignInPageState extends State<SignInPage> {
         email: email,
         password: password,
       );
+
+      // ✅ сохраняем вход
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLoggedIn', true);
+
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => HomePage()),
+          MaterialPageRoute(builder: (context) => const HomePage()),
         );
       }
     } on FirebaseAuthException catch (e) {
@@ -88,7 +95,7 @@ class _SignInPageState extends State<SignInPage> {
           isLoading = false;
         });
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         setState(() {
           errorText = 'Произошла неизвестная ошибка';
@@ -98,18 +105,24 @@ class _SignInPageState extends State<SignInPage> {
     }
   }
 
+  /// 🔑 Анонимный вход (гость)
   Future<void> _signInAnonymously() async {
     if (isLoading) return;
     if (mounted) setState(() => isLoading = true);
     try {
       await FirebaseAuth.instance.signInAnonymously();
+
+      // ✅ сохраняем вход
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLoggedIn', true);
+
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => HomePage()),
+          MaterialPageRoute(builder: (context) => const HomePage()),
         );
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         setState(() {
           errorText = 'Не удалось войти как гость';
@@ -134,6 +147,7 @@ class _SignInPageState extends State<SignInPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            /// 🔘 Кнопка "Пропустить" (гостевой вход)
             Padding(
               padding: const EdgeInsets.only(bottom: 60, left: 260),
               child: InkWell(
@@ -148,18 +162,24 @@ class _SignInPageState extends State<SignInPage> {
                 ),
               ),
             ),
+
+            /// 📧 Поле Email
             UserEmailPasswordline(
               icon: Icons.mail_outline_rounded,
               hinText: 'Ваша электронная почта',
               controller: emailController,
             ),
             const SizedBox(height: 20),
+
+            /// 🔒 Поле Пароль
             UserEmailPasswordline(
               icon: Icons.remove_red_eye_outlined,
               hinText: 'Пароль',
               controller: passwordController,
               obscureText: true,
             ),
+
+            /// ⚠️ Ошибка
             if (errorText != null) ...[
               const SizedBox(height: 10),
               Text(
@@ -167,7 +187,10 @@ class _SignInPageState extends State<SignInPage> {
                 style: const TextStyle(color: Colors.red, fontSize: 13),
               ),
             ],
+
             const SizedBox(height: 40),
+
+            /// 🔘 Кнопка "Войти"
             NavigateButton(
               text: isLoading ? 'Вход...' : 'Вход',
               borderRadius: BorderRadius.circular(24),
@@ -175,7 +198,10 @@ class _SignInPageState extends State<SignInPage> {
               onPressed: isLoading ? null : _signIn,
               isLoading: isLoading,
             ),
+
             const SizedBox(height: 20),
+
+            /// 📌 Ссылка "Регистрация"
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -208,7 +234,10 @@ class _SignInPageState extends State<SignInPage> {
                 ),
               ],
             ),
+
             const SizedBox(height: 20),
+
+            /// 🔘 Разделитель "Или"
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -238,8 +267,11 @@ class _SignInPageState extends State<SignInPage> {
                 ),
               ],
             ),
+
             const SizedBox(height: 30),
-            const ButtonSignInToGoogle(),
+
+            /// 🔑 Вход через Google
+            // const ButtonSignInToGoogle(),
           ],
         ),
       ),

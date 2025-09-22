@@ -1,3 +1,4 @@
+import 'package:calculator/text_styles/text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -21,8 +22,107 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
   bool roundEachStep = true;
   bool hasCalculated = false;
   bool isSaving = false;
+  bool isSaved = false; // 👈 состояние для галочки
   String rastamozhkaResult = "";
 
+  /// 🔽 Метод расчета
+  void calculateRastamozhka() {
+    final priceText = priceController.text.replaceAll(' ', '');
+    if (priceText.isEmpty || priceText == "0") {
+      setState(() {
+        rastamozhkaResult = "Введите стоимость товара!";
+        hasCalculated = true;
+      });
+      return;
+    }
+
+    final price = int.tryParse(priceText) ?? 0;
+    final dutyPercent = double.tryParse(dutyController.text) ?? 0;
+    final ndsPercent = double.tryParse(ndsController.text) ?? 0;
+    final feePercent = double.tryParse(feeController.text) ?? 0;
+    final freight = double.tryParse(freightController.text) ?? 0;
+
+    int dutySum = (price * dutyPercent / 100).round();
+    int feeSum = (price * feePercent / 100).round();
+    double vatBase = price + dutySum + freight;
+    if (includeFeeInVatBase) vatBase += feeSum;
+    int ndsSum = (vatBase * ndsPercent / 100).round();
+    int total = dutySum + ndsSum + feeSum;
+
+    setState(() {
+      rastamozhkaResult =
+          "Пошлина: ${_formatNumber(dutySum)} сом\nНДС: ${_formatNumber(ndsSum)} сом\nТаможенный сбор: ${_formatNumber(feeSum)} сом\n----------------------\nИтого: ${_formatNumber(total)} сом";
+      hasCalculated = true;
+    });
+  }
+
+  /// 🔘 Сохранение в Firestore
+  Future<void> saveToHistoryFirebase({
+    required String name,
+    required String tnvEd,
+    required String company,
+    required String senderCountry,
+    required String receiverCountry,
+  }) async {
+    setState(() {
+      isSaving = true;
+    });
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      setState(() {
+        isSaving = false;
+      });
+      return;
+    }
+
+    final data = {
+      'price': priceController.text,
+      'duty': dutyController.text,
+      'nds': ndsController.text,
+      'fee': feeController.text,
+      'freight': freightController.text,
+      'includeFeeInVatBase': includeFeeInVatBase,
+      'roundEachStep': roundEachStep,
+      'result': rastamozhkaResult,
+      'name': name,
+      'tnved': tnvEd,
+      'company': company,
+      'senderCountry': senderCountry,
+      'receiverCountry': receiverCountry,
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('history')
+          .add(data);
+
+      if (!mounted) return;
+      setState(() {
+        isSaving = false;
+        isSaved = true; // 👈 показываем галочку
+      });
+
+      // ⏳ Через 2 секунды вернём кнопку в обычное состояние
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          setState(() {
+            isSaved = false;
+          });
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        isSaving = false;
+      });
+    }
+  }
+
+  /// 🔘 BottomSheet для ввода данных
   Future<void> _showSaveBottomSheet() async {
     final nameController = TextEditingController();
     final tnvEdController = TextEditingController();
@@ -47,294 +147,284 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
             right: 20,
             top: 20,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildBottomSheetField(
-                Icons.label,
-                "Наименование товара",
-                nameController,
-              ),
-              _buildBottomSheetField(
-                Icons.numbers,
-                "ТНВЭД код",
-                tnvEdController,
-              ),
-              _buildBottomSheetField(
-                Icons.business,
-                "Имя / Компания",
-                companyController,
-              ),
-              _buildBottomSheetField(
-                Icons.flag,
-                "Страна отправитель",
-                senderCountryController,
-              ),
-              _buildBottomSheetField(
-                Icons.flag,
-                "Страна получатель",
-                receiverCountryController,
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () async {
-                  Navigator.pop(context);
-                  await saveToHistoryFirebase(
-                    name: nameController.text,
-                    tnvEd: tnvEdController.text,
-                    company: companyController.text,
-                    route: '',
-                    senderCountry: senderCountryController.text,
-                    receiverCountry: receiverCountryController.text,
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  maximumSize: const Size(150, 100),
-                  minimumSize: const Size(100, 50),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildBottomSheetField(
+                  Icons.folder,
+                  "Наименование товара",
+                  nameController,
                 ),
-                child: const Text(
-                  "Сохранить",
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+                _buildBottomSheetField(Icons.tag, "ТНВЭД код", tnvEdController),
+                _buildBottomSheetField(
+                  Icons.business,
+                  "Имя / Компания",
+                  companyController,
                 ),
-              ),
-              const SizedBox(height: 20),
-            ],
+                _buildBottomSheetField(
+                  Icons.flag,
+                  "Страна отправитель",
+                  senderCountryController,
+                ),
+                _buildBottomSheetField(
+                  Icons.flag,
+                  "Страна получатель",
+                  receiverCountryController,
+                ),
+                const SizedBox(height: 20),
+                _buildGradientButton(
+                  text: "Сохранить",
+                  colors: [Colors.green.shade700, Colors.greenAccent],
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await saveToHistoryFirebase(
+                      name: nameController.text,
+                      tnvEd: tnvEdController.text,
+                      company: companyController.text,
+                      senderCountry: senderCountryController.text,
+                      receiverCountry: receiverCountryController.text,
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  Future<void> saveToHistoryFirebase({
-    required String name,
-    required String tnvEd,
-    required String company,
-    required String route,
-    required String senderCountry,
-    required String receiverCountry,
-  }) async {
-    setState(() {
-      isSaving = true;
-    });
-
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Ошибка авторизации')));
-      setState(() {
-        isSaving = false;
-      });
-      return;
-    }
-
-    final data = {
-      'price': priceController.text,
-      'duty': dutyController.text,
-      'nds': ndsController.text,
-      'fee': feeController.text,
-      'freight': freightController.text,
-      'includeFeeInVatBase': includeFeeInVatBase,
-      'roundEachStep': roundEachStep,
-      'result': rastamozhkaResult,
-      'name': name,
-      'tnved': tnvEd,
-      'company': company,
-      'route': route,
-      'senderCountry': senderCountry,
-      'receiverCountry': receiverCountry,
-      'timestamp': DateTime.now().toIso8601String(),
-    };
-
-    try {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('history')
-          .add(data);
-
-      setState(() {
-        isSaving = false;
-      });
-
-      ScaffoldMessenger.of(
-        // ignore: use_build_context_synchronously
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Сохранено успешно!')));
-    } catch (e) {
-      ScaffoldMessenger.of(
-        // ignore: use_build_context_synchronously
-        context,
-      ).showSnackBar(SnackBar(content: Text('Ошибка сохранения: $e')));
-      setState(() {
-        isSaving = false;
-      });
-    }
-  }
-
-  void calculateRastamozhka() {
-    final priceText = priceController.text.replaceAll(' ', '');
-    if (priceText.isEmpty) {
-      setState(() {
-        rastamozhkaResult = "Введите стоимость товара!";
-        hasCalculated = true;
-      });
-      return;
-    }
-
-    final price = int.tryParse(priceText) ?? 0;
-    final dutyPercent = double.tryParse(dutyController.text) ?? 0;
-    final ndsPercent = double.tryParse(ndsController.text) ?? 0;
-    final feePercent = double.tryParse(feeController.text) ?? 0;
-    final freight = double.tryParse(freightController.text) ?? 0;
-
-    int dutySum = (price * dutyPercent / 100).round();
-    int feeSum = (price * feePercent / 100).round();
-    double vatBase = price + dutySum + freight;
-    if (includeFeeInVatBase) vatBase += feeSum;
-    int ndsSum = (vatBase * ndsPercent / 100).round();
-    int total = dutySum + ndsSum + feeSum;
-
-    setState(() {
-      rastamozhkaResult =
-          "Пошлина: $dutySum сом\nНДС: $ndsSum сом\nТаможенный сбор: $feeSum сом\n----------------------\nИтого: $total сом";
-      hasCalculated = true;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final isGuest = FirebaseAuth.instance.currentUser?.isAnonymous ?? true;
+    final String rawPrice = priceController.text.replaceAll(" ", "");
+    final bool disableSaveButton =
+        rawPrice.isEmpty ||
+        rawPrice == "0" ||
+        rastamozhkaResult == "Введите стоимость товара!";
 
     return Scaffold(
+      extendBody: true,
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
-        title: const Text(
-          "Растаможка",
-          style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
-        ),
+        elevation: 0,
+        title: const Text("Растаможка", style: AppTextStyles.appBarTextStyle),
         centerTitle: true,
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildField("Стоимость товара", priceController),
-              Row(
-                children: [
-                  Expanded(child: _buildField("Пошлина (%)", dutyController)),
-                  const SizedBox(width: 10),
-                  Expanded(child: _buildField("НДС (%)", ndsController)),
-                ],
-              ),
-              Row(
-                children: [
-                  Expanded(child: _buildField("Сбор (%)", feeController)),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _buildField(
-                      "Доставка/страховка (сом)",
-                      freightController,
-                    ),
-                  ),
-                ],
-              ),
-              _toggle(
-                title: "Включать сбор в базу НДС",
-                value: includeFeeInVatBase,
-                onChanged: (v) => setState(() => includeFeeInVatBase = v),
-              ),
-              _toggle(
-                title: "Округлять каждую позицию (до 1 сома)",
-                value: roundEachStep,
-                onChanged: (v) => setState(() => roundEachStep = v),
-              ),
-              ElevatedButton(
-                onPressed: calculateRastamozhka,
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(90, 50),
-                  backgroundColor: Colors.orange,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  maximumSize: const Size(double.infinity, 56),
-                ),
-                child: const Text(
-                  "Рассчитать",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              if (hasCalculated) ...[
-                const SizedBox(height: 16),
-                if (!isGuest)
-                  ElevatedButton(
-                    onPressed: _showSaveBottomSheet,
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(90, 50),
-                      backgroundColor: Colors.green,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+        bottom: false,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.all(20),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildCardField(
+                        "Стоимость товара",
+                        priceController,
+                        isPrice: true,
                       ),
-                      maximumSize: const Size(double.infinity, 56),
-                    ),
-                    child: isSaving
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text(
-                            "Сохранить",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildCardField(
+                              "Пошлина (%)",
+                              dutyController,
                             ),
                           ),
-                  )
-                else
-                  const Text(
-                    "Вы зашли как гость. Чтобы сохранять историю — зарегистрируйтесь",
-                    style: TextStyle(
-                      color: Colors.orange,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                Container(
-                  margin: const EdgeInsets.only(top: 16),
-                  padding: const EdgeInsets.all(20),
-                  color: Colors.black,
-                  child: Text(
-                    rastamozhkaResult,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'RobotoMono',
-                    ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildCardField("НДС (%)", ndsController),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildCardField("Сбор (%)", feeController),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildCardField(
+                              "Доставка/страховка (сом)",
+                              freightController,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      _toggle(
+                        title: "Включать сбор в базу НДС",
+                        value: includeFeeInVatBase,
+                        onChanged: (v) =>
+                            setState(() => includeFeeInVatBase = v),
+                      ),
+                      _toggle(
+                        title: "Округлять каждую позицию (до 1 сома)",
+                        value: roundEachStep,
+                        onChanged: (v) => setState(() => roundEachStep = v),
+                      ),
+                      const SizedBox(height: 20),
+                      _buildGradientButton(
+                        text: "Рассчитать",
+                        colors: [Colors.deepOrange, Colors.orangeAccent],
+                        onTap: calculateRastamozhka,
+                      ),
+                      if (hasCalculated) ...[
+                        const SizedBox(height: 16),
+                        if (!isGuest)
+                          _buildGradientButton(
+                            text: "Сохранить",
+                            colors: disableSaveButton
+                                ? [Colors.grey, Colors.grey]
+                                : [Colors.green.shade700, Colors.greenAccent],
+                            onTap: disableSaveButton
+                                ? null
+                                : _showSaveBottomSheet,
+                            isLoading: isSaving,
+                            isSaved: isSaved, // 👈 добавили состояние галочки
+                          )
+                        else
+                          const Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: Text(
+                              "Вы зашли как гость. Чтобы сохранять историю — зарегистрируйтесь",
+                              style: TextStyle(
+                                color: Colors.orangeAccent,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        Container(
+                          margin: const EdgeInsets.only(top: 16, bottom: 16),
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[900],
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Colors.orangeAccent,
+                              width: 1.2,
+                            ),
+                          ),
+                          child: Text(
+                            rastamozhkaResult,
+                            style: AppTextStyles.buttonTextStyle,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-              ],
-            ],
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
   }
 
+  /// 🔲 Поля ввода
+  Widget _buildCardField(
+    String label,
+    TextEditingController controller, {
+    bool isPrice = false,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          if (isPrice) ThousandsFormatter(),
+        ],
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
+          labelText: label,
+          labelStyle: AppTextStyles.cardTextStyle,
+          border: InputBorder.none,
+        ),
+      ),
+    );
+  }
+
+  /// 🔘 Кнопки
+  Widget _buildGradientButton({
+    required String text,
+    required List<Color> colors,
+    required VoidCallback? onTap,
+    bool isLoading = false,
+    bool isSaved = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        height: 50,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          gradient: LinearGradient(colors: colors),
+        ),
+        child: Center(
+          child: isLoading
+              ? const CircularProgressIndicator(color: Colors.white)
+              : AnimatedScale(
+                  scale: isSaved ? 1.1 : 1.0,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutBack,
+                  child: isSaved
+                      ? Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.check, color: Colors.white),
+                            SizedBox(width: 8),
+                            Text(
+                              "Сохранено",
+                              style: AppTextStyles.buttonTextStyle,
+                            ),
+                          ],
+                        )
+                      : Text(text, style: AppTextStyles.buttonTextStyle),
+                ),
+        ),
+      ),
+    );
+  }
+
+  /// 🔘 Тумблеры
+  Widget _toggle({
+    required String title,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return SwitchListTile(
+      title: Text(title, style: AppTextStyles.buttonTextStyle),
+      value: value,
+      onChanged: onChanged,
+      activeThumbColor: Colors.orangeAccent,
+      inactiveThumbColor: Colors.grey,
+      inactiveTrackColor: Colors.grey[800],
+    );
+  }
+
+  /// 🔲 Поле bottom sheet
   Widget _buildBottomSheetField(
     IconData icon,
     String hint,
@@ -346,76 +436,56 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
         controller: controller,
         style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
-          prefixIcon: Icon(icon, color: Colors.orange),
+          prefixIcon: Icon(icon, color: Colors.orangeAccent),
           hintText: hint,
-          hintStyle: const TextStyle(color: Colors.orange),
+          hintStyle: const TextStyle(color: Colors.orangeAccent),
+          filled: true,
+          fillColor: Colors.grey[900],
           enabledBorder: OutlineInputBorder(
-            borderSide: const BorderSide(color: Colors.orange),
-            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.orangeAccent),
+            borderRadius: BorderRadius.circular(14),
           ),
           focusedBorder: OutlineInputBorder(
-            borderSide: const BorderSide(color: Colors.orange, width: 2),
-            borderRadius: BorderRadius.circular(20),
+            borderSide: const BorderSide(color: Colors.deepOrange, width: 2),
+            borderRadius: BorderRadius.circular(16),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildField(String label, TextEditingController controller) {
-    final isPrice = label == "Стоимость товара";
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: controller,
-        keyboardType: TextInputType.number,
-        inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'[0-9\.\,\s]')),
-          if (isPrice) ThousandsFormatter(),
-        ],
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(color: Colors.orange),
-          enabledBorder: OutlineInputBorder(
-            borderSide: const BorderSide(color: Colors.orange),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderSide: const BorderSide(color: Colors.orange, width: 2),
-            borderRadius: BorderRadius.circular(20),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _toggle({
-    required String title,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return SwitchListTile(
-      title: Text(title, style: const TextStyle(color: Colors.white)),
-      value: value,
-      onChanged: onChanged,
-      activeTrackColor: Colors.orange,
-      inactiveTrackColor: Colors.grey[700],
-    );
+  /// 🔥 Форматирование чисел
+  String _formatNumber(int value) {
+    final str = value.toString();
+    final buffer = StringBuffer();
+    int count = 0;
+    for (int i = str.length - 1; i >= 0; i--) {
+      buffer.write(str[i]);
+      count++;
+      if (count == 3 && i != 0) {
+        buffer.write(' ');
+        count = 0;
+      }
+    }
+    return buffer.toString().split('').reversed.join();
   }
 }
 
+/// 🔥 InputFormatter для поля ввода
 class ThousandsFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    final text = newValue.text.replaceAll(' ', '').replaceAll(',', '.');
+    String text = newValue.text.replaceAll(' ', '');
     if (text.isEmpty) return newValue.copyWith(text: '');
-    final numValue = int.tryParse(text);
-    if (numValue == null) return newValue;
-    final newText = _formatWithSpaces(numValue.toString());
+
+    final number = int.tryParse(text);
+    if (number == null) return oldValue;
+
+    final newText = _formatWithSpaces(number.toString());
+
     return TextEditingValue(
       text: newText,
       selection: TextSelection.collapsed(offset: newText.length),

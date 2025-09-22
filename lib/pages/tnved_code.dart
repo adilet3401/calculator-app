@@ -1,3 +1,4 @@
+import 'package:calculator/text_styles/text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -11,40 +12,28 @@ class TnvedPage extends StatefulWidget {
 class _TnvedPageState extends State<TnvedPage>
     with AutomaticKeepAliveClientMixin {
   late final WebViewController controller;
-  bool isLoading = true; // Переменная для отслеживания состояния загрузки
+  bool isLoading = true;
 
   @override
-  bool get wantKeepAlive => true; // Сохраняем состояние страницы
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
     controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0x00000000))
+      ..setBackgroundColor(const Color(0x00000000)) // 👈 прозрачный фон WebView
       ..setNavigationDelegate(
         NavigationDelegate(
-          onProgress: (int progress) {
-            // Можно обновлять прогресс загрузки, если нужно
-          },
           onPageStarted: (String url) {
-            setState(() {
-              isLoading = true; // Показываем индикатор загрузки
-            });
+            setState(() => isLoading = true);
           },
           onPageFinished: (String url) {
-            setState(() {
-              isLoading = false; // Скрываем индикатор загрузки
-            });
-            // Инжектим метатег viewport после загрузки страницы
+            setState(() => isLoading = false);
+            // 🔽 фиксируем метатег viewport для нормального отображения
             controller.runJavaScript(
               'document.querySelector("meta[name=viewport]").setAttribute("content", "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no");',
             );
-          },
-          onHttpError: (HttpResponseError error) {},
-          onWebResourceError: (WebResourceError error) {},
-          onNavigationRequest: (NavigationRequest request) {
-            return NavigationDecision.navigate;
           },
         ),
       )
@@ -53,21 +42,26 @@ class _TnvedPageState extends State<TnvedPage>
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // Необходимо для AutomaticKeepAliveClientMixin
+    super.build(context);
     return Scaffold(
-      backgroundColor: Colors.white,
+      extendBody: true, // 👈 фон продолжается под стеклянный навбар
+      backgroundColor: Colors.black, // 👈 общий фон
       appBar: AppBar(
         backgroundColor: Colors.orange,
-        title: const Text(
+        elevation: 0,
+        title: Text(
           'Поиск по ТН ВЭД',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          style: AppTextStyles.appBarTextStyle.copyWith(color: Colors.black),
         ),
         centerTitle: true,
       ),
       body: Stack(
         children: [
-          WebViewWidget(controller: controller), // Веб-виджет
-          if (isLoading) // Показываем индикатор, если isLoading = true
+          SafeArea(
+            bottom: false, // 👈 чтобы навбар оставался стеклянным
+            child: WebViewWidget(controller: controller),
+          ),
+          if (isLoading)
             const Center(
               child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),

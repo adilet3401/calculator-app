@@ -1,6 +1,6 @@
 import 'package:calculator/widgets/email_phone_name_edit_line.dart';
 import 'package:calculator/widgets/navigate_button.dart';
-import 'package:calculator/widgets/sign_in_to_google.dart';
+// import 'package:calculator/widgets/sign_in_to_google.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -267,7 +267,7 @@ class _RegisterPageInGuestState extends State<RegisterPageInGuest> {
               ],
             ),
             SizedBox(height: 30),
-            ButtonSignInToGoogle(),
+            // ButtonSignInToGoogle(),
           ],
         ),
       ),
