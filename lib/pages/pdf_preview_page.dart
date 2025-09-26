@@ -26,6 +26,7 @@ class PdfPreviewPage extends StatelessWidget {
       dutySum: reportData.dutySum,
       ndsSum: reportData.ndsSum,
       feeSum: reportData.feeSum,
+      currency: reportData.currency,
     );
 
     final dir = await getTemporaryDirectory();

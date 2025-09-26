@@ -18,6 +18,7 @@ class PdfReport {
     required String dutySum, // сумма пошлины
     required String ndsSum, // сумма НДС
     required String feeSum, // сумма сбора
+    required String currency,
   }) async {
     final font = pw.Font.ttf(
       await rootBundle.load('assets/fonts/Nunito-Regular.ttf'),
@@ -73,7 +74,12 @@ class PdfReport {
 
                 // Второй блок (Итого)
                 _pdfBox([
-                  _pdfRow('Стоимость:', '$displayPrice сом', font, boldFont),
+                  _pdfRow(
+                    'Стоимость:',
+                    '$displayPrice $currency',
+                    font,
+                    boldFont,
+                  ),
                   _pdfRow('Пошлина:', '$displayDutyPercent %', font, boldFont),
                   _pdfRow('НДС:', '$displayNdsPercent %', font, boldFont),
                   _pdfRow(
@@ -85,23 +91,8 @@ class PdfReport {
                   pw.SizedBox(height: 10),
                   pw.Divider(color: PdfColors.orange, thickness: 1),
                   pw.SizedBox(height: 10),
-                  _pdfRow('Итого:', '$resultText сом', font, boldFont),
+                  _pdfRow('Итого:', resultText, font, boldFont),
                 ]),
-
-                // pw.SizedBox(height: 14),
-
-                // Третий блок (Стоимость и %)
-                // _pdfBox([
-                //   _pdfRow('Стоимость:', '$displayPrice сом', font, boldFont),
-                //   _pdfRow('Пошлина:', '$displayDutyPercent %', font, boldFont),
-                //   _pdfRow('НДС:', '$displayNdsPercent %', font, boldFont),
-                //   _pdfRow(
-                //     'Таможенный сбор:',
-                //     '$displayFeePercent %',
-                //     font,
-                //     boldFont,
-                //   ),
-                // ]),
               ],
             ),
           );
@@ -177,6 +168,7 @@ class PdfReportData {
   final String dutySum;
   final String ndsSum;
   final String feeSum;
+  final String currency; // 👈 добавляем сюда валюту
 
   PdfReportData({
     required this.itemName,
@@ -193,5 +185,6 @@ class PdfReportData {
     required this.dutySum,
     required this.ndsSum,
     required this.feeSum,
+    required this.currency,
   });
 }

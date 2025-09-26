@@ -71,7 +71,6 @@ class _HistoryPageState extends State<HistoryPage> {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                // ignore: deprecated_member_use
                 color: Colors.black.withOpacity(0.6),
                 blurRadius: 12,
                 offset: const Offset(0, 6),
@@ -81,10 +80,8 @@ class _HistoryPageState extends State<HistoryPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Иконка корзины
               CircleAvatar(
                 radius: 32,
-                // ignore: deprecated_member_use
                 backgroundColor: Colors.redAccent.withOpacity(0.15),
                 child: const Icon(
                   Icons.delete_forever,
@@ -222,7 +219,12 @@ class _HistoryPageState extends State<HistoryPage> {
     final company = (data['company'] ?? '').toString();
     final senderCountry = (data['senderCountry'] ?? '').toString();
     final receiverCountry = (data['receiverCountry'] ?? '').toString();
+    final currency = (data['currency'] ?? 'KGS').toString();
+
     final savedAtStr = DateFormat('dd.MM.yyyy HH:mm').format(savedAt);
+
+    final currencySymbols = {"KGS": "сом", "EUR": "€", "USDT": "\$"};
+    final symbol = currencySymbols[currency] ?? "сом";
 
     Navigator.push(
       context,
@@ -308,7 +310,7 @@ class _HistoryPageState extends State<HistoryPage> {
                         _buildResultRow(
                           Icons.attach_money,
                           'Стоимость:',
-                          '$displayPrice сом',
+                          '$displayPrice $symbol',
                         ),
                         _buildResultRow(
                           Icons.percent,
@@ -328,7 +330,11 @@ class _HistoryPageState extends State<HistoryPage> {
                         const SizedBox(height: 10),
                         const Divider(color: Colors.orange, thickness: 0.6),
                         const SizedBox(height: 10),
-                        _buildResultRow(Icons.calculate, 'Итого:', resultText),
+                        _buildResultRow(
+                          Icons.calculate,
+                          'Итого:',
+                          '$resultText $symbol',
+                        ),
                       ],
                     ],
                   ),
@@ -351,10 +357,11 @@ class _HistoryPageState extends State<HistoryPage> {
                             displayDutyPercent: displayDutyPercent,
                             displayNdsPercent: displayNdsPercent,
                             displayFeePercent: displayFeePercent,
-                            resultText: resultText,
+                            resultText: "$resultText ",
                             dutySum: '',
                             ndsSum: '',
                             feeSum: '',
+                            currency: symbol,
                           ),
                         ),
                       ),
@@ -415,7 +422,7 @@ class _HistoryPageState extends State<HistoryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBody: true, // 👈 чтобы фон был под стеклянным навбаром
+      extendBody: true,
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,

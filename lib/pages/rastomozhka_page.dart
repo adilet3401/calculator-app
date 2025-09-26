@@ -25,6 +25,14 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
   bool isSaved = false; // 👈 состояние для галочки
   String rastamozhkaResult = "";
 
+  /// 🔹 Валюта
+  String selectedCurrency = "KGS";
+  final Map<String, String> currencySymbols = {
+    "KGS": "сом",
+    "EUR": "€",
+    "USD": '\$',
+  };
+
   /// 🔽 Метод расчета
   void calculateRastamozhka() {
     final priceText = priceController.text.replaceAll(' ', '');
@@ -51,7 +59,11 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
 
     setState(() {
       rastamozhkaResult =
-          "Пошлина: ${_formatNumber(dutySum)} сом\nНДС: ${_formatNumber(ndsSum)} сом\nТаможенный сбор: ${_formatNumber(feeSum)} сом\n----------------------\nИтого: ${_formatNumber(total)} сом";
+          "Пошлина: ${_formatNumber(dutySum)} ${currencySymbols[selectedCurrency]}\n"
+          "НДС: ${_formatNumber(ndsSum)} ${currencySymbols[selectedCurrency]}\n"
+          "Таможенный сбор: ${_formatNumber(feeSum)} ${currencySymbols[selectedCurrency]}\n"
+          "----------------------\n"
+          "Итого: ${_formatNumber(total)} ${currencySymbols[selectedCurrency]}";
       hasCalculated = true;
     });
   }
@@ -85,6 +97,7 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
       'includeFeeInVatBase': includeFeeInVatBase,
       'roundEachStep': roundEachStep,
       'result': rastamozhkaResult,
+      'currency': selectedCurrency, // 👈 сохраняем валюту
       'name': name,
       'tnved': tnvEd,
       'company': company,
@@ -220,7 +233,14 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
           builder: (context, constraints) {
             return SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom:
+                    kBottomNavigationBarHeight + 20, // 🔥 добавили отступ снизу
+              ),
+
               child: ConstrainedBox(
                 constraints: BoxConstraints(minHeight: constraints.maxHeight),
                 child: IntrinsicHeight(
@@ -231,6 +251,7 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
                         "Стоимость товара",
                         priceController,
                         isPrice: true,
+                        icon: Icons.attach_money,
                       ),
                       Row(
                         children: [
@@ -238,29 +259,101 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
                             child: _buildCardField(
                               "Пошлина (%)",
                               dutyController,
+                              icon: Icons.percent,
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: _buildCardField("НДС (%)", ndsController),
+                            child: _buildCardField(
+                              "НДС (%)",
+                              ndsController,
+                              icon: Icons.percent,
+                            ),
                           ),
                         ],
                       ),
                       Row(
                         children: [
                           Expanded(
-                            child: _buildCardField("Сбор (%)", feeController),
+                            child: _buildCardField(
+                              "Сбор (%)",
+                              feeController,
+                              icon: Icons.percent,
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: _buildCardField(
-                              "Доставка/страховка (сом)",
+                              "Доставка/страховка",
                               freightController,
+                              icon: Icons.attach_money,
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 8),
+
+                      /// 🔹 выбор валюты
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[900],
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Colors.orangeAccent,
+                            width: 1.2,
+                          ),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: selectedCurrency,
+                            dropdownColor: Colors.grey[900],
+                            icon: const Icon(
+                              Icons.arrow_drop_down,
+                              color: Colors.orangeAccent,
+                            ),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            items: currencySymbols.keys.map((String value) {
+                              return DropdownMenuItem<String>(
+                                value: value,
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      value,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      currencySymbols[value]!,
+                                      style: const TextStyle(
+                                        color: Colors.orangeAccent,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (newValue) {
+                              if (newValue != null) {
+                                setState(() {
+                                  selectedCurrency = newValue;
+                                });
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+
                       _toggle(
                         title: "Включать сбор в базу НДС",
                         value: includeFeeInVatBase,
@@ -268,7 +361,7 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
                             setState(() => includeFeeInVatBase = v),
                       ),
                       _toggle(
-                        title: "Округлять каждую позицию (до 1 сома)",
+                        title: "Округлять каждую позицию (до 1)",
                         value: roundEachStep,
                         onChanged: (v) => setState(() => roundEachStep = v),
                       ),
@@ -290,7 +383,7 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
                                 ? null
                                 : _showSaveBottomSheet,
                             isLoading: isSaving,
-                            isSaved: isSaved, // 👈 добавили состояние галочки
+                            isSaved: isSaved,
                           )
                         else
                           const Padding(
@@ -305,8 +398,11 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
                             ),
                           ),
                         Container(
-                          margin: const EdgeInsets.only(top: 16, bottom: 16),
-                          padding: const EdgeInsets.all(20),
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 16,
+                          ),
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: Colors.grey[900],
                             borderRadius: BorderRadius.circular(16),
@@ -333,10 +429,12 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
   }
 
   /// 🔲 Поля ввода
+  /// 🔲 Поля ввода
   Widget _buildCardField(
     String label,
     TextEditingController controller, {
     bool isPrice = false,
+    IconData? icon, // 👈 добавили параметр для иконки
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -353,6 +451,9 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
         ],
         style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
+          prefixIcon: icon != null
+              ? Icon(icon, color: Colors.orangeAccent) // 👈 иконка слева
+              : null,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 14,

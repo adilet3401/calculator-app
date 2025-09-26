@@ -1,10 +1,9 @@
 import 'package:calculator/widgets/email_phone_name_edit_line.dart';
 import 'package:calculator/widgets/navigate_button.dart';
-// import 'package:calculator/widgets/sign_in_to_google.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'sign_in_page.dart'; // Импортируйте страницу входа
+import 'sign_in_page.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -70,40 +69,44 @@ class _RegisterPageState extends State<RegisterPage> {
     }
 
     try {
+      // Создаем пользователя
       UserCredential userCredential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(email: email, password: password);
 
-      // Дожидаемся записи в Firestore
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userCredential.user!.uid)
-          .set({
-            'name': name,
-            'email': email,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
+      User? user = userCredential.user;
 
-      nameController.clear();
-      emailController.clear();
-      passwordController.clear();
-      repeatPasswordController.clear();
+      if (user != null) {
+        // Отправляем письмо для подтверждения
+        await user.sendEmailVerification();
 
-      if (!mounted) return;
+        // Записываем данные в Firestore
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'name': name,
+          'email': email,
+          'createdAt': FieldValue.serverTimestamp(),
+          'emailVerified': false,
+        });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Вы успешно зарегистрировались!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+        nameController.clear();
+        emailController.clear();
+        passwordController.clear();
+        repeatPasswordController.clear();
 
-      await Future.delayed(const Duration(seconds: 1));
+        if (!mounted) return;
 
-      if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const SignInPage()),
-        (route) => false,
-      );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('На вашу почту отправлено письмо для подтверждения.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+
+        // Переходим на SignInPage
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const SignInPage()),
+          (route) => false,
+        );
+      }
     } on FirebaseAuthException catch (e) {
       setState(() {
         errorText = e.code == 'weak-password'
@@ -167,20 +170,20 @@ class _RegisterPageState extends State<RegisterPage> {
               hinText: 'Ваше имя',
               controller: nameController,
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             UserEmailPasswordline(
               icon: Icons.mail_outline_rounded,
               hinText: 'Ваша электронная почта',
               controller: emailController,
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             UserEmailPasswordline(
               icon: Icons.remove_red_eye_outlined,
               hinText: 'Пароль',
               controller: passwordController,
               obscureText: true,
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             UserEmailPasswordline(
               icon: Icons.remove_red_eye_outlined,
               hinText: 'Повтор пароля',
@@ -188,24 +191,26 @@ class _RegisterPageState extends State<RegisterPage> {
               obscureText: true,
             ),
             if (errorText != null) ...[
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               Text(
                 errorText!,
-                style: TextStyle(color: Colors.red, fontSize: 13),
+                style: const TextStyle(color: Colors.red, fontSize: 13),
               ),
             ],
-            SizedBox(height: 40),
+            const SizedBox(height: 40),
             NavigateButton(
               text: isLoading ? 'Регистрация...' : 'Зарегистрироваться',
               borderRadius: BorderRadius.circular(24),
-              minimumSize: Size(double.infinity, 56),
+              minimumSize: const Size(double.infinity, 56),
               onPressed: isLoading ? null : _register,
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
+
+            // 🔹 Все тексты под кнопкой оставлены
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
+                const Text(
                   'У вас есть зарегистрированный аккаунт?',
                   style: TextStyle(
                     color: Color(0xff878787),
@@ -213,12 +218,12 @@ class _RegisterPageState extends State<RegisterPage> {
                     fontSize: 12,
                   ),
                 ),
-                SizedBox(width: 9),
+                const SizedBox(width: 9),
                 InkWell(
                   onTap: () {
                     Navigator.pop(context);
                   },
-                  child: Text(
+                  child: const Text(
                     'Вход',
                     style: TextStyle(
                       color: Colors.blue,
@@ -229,7 +234,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
               ],
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -241,7 +246,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     endIndent: 10,
                   ),
                 ),
-                Text(
+                const Text(
                   'Или',
                   style: TextStyle(
                     color: Color(0xff878787),
@@ -259,8 +264,8 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
               ],
             ),
-            SizedBox(height: 30),
-            // ButtonSignInToGoogle(),
+            const SizedBox(height: 30),
+            // const ButtonSignInToGoogle(),  // если понадобится
           ],
         ),
       ),

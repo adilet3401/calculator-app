@@ -1,6 +1,5 @@
 import 'package:calculator/pages/home_page.dart';
 import 'package:calculator/sign-log_in%20pages/register_page.dart';
-// import 'package:calculator/widgets/sign_in_to_google.dart';
 import 'package:calculator/widgets/email_phone_name_edit_line.dart';
 import 'package:calculator/widgets/navigate_button.dart';
 import 'package:flutter/material.dart';
@@ -53,10 +52,23 @@ class _SignInPageState extends State<SignInPage> {
     }
 
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      final userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: email, password: password);
+
+      final user = userCredential.user;
+
+      if (user != null && !user.emailVerified) {
+        // 📩 если почта не подтверждена
+        await user.sendEmailVerification(); // повторная отправка
+        if (mounted) {
+          setState(() {
+            errorText = 'Подтвердите email. Ссылка отправлена повторно.';
+            isLoading = false;
+          });
+        }
+        await FirebaseAuth.instance.signOut(); // выходим, пока не подтвердит
+        return;
+      }
 
       // ✅ сохраняем вход
       final prefs = await SharedPreferences.getInstance();
@@ -270,7 +282,7 @@ class _SignInPageState extends State<SignInPage> {
 
             const SizedBox(height: 30),
 
-            /// 🔑 Вход через Google
+            /// 🔑 Вход через Google (если нужно)
             // const ButtonSignInToGoogle(),
           ],
         ),
