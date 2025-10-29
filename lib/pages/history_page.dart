@@ -35,8 +35,8 @@ class _HistoryPageState extends State<HistoryPage> {
         .get();
 
     setState(() {
-      historyDocs = snapshot.docs
-          .cast<QueryDocumentSnapshot<Map<String, dynamic>>>();
+      historyDocs =
+          snapshot.docs.cast<QueryDocumentSnapshot<Map<String, dynamic>>>();
     });
   }
 
@@ -160,6 +160,7 @@ class _HistoryPageState extends State<HistoryPage> {
   void _showDataPage(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data();
 
+    // утилиты парсинга
     num parseNum(dynamic value) {
       if (value == null) return 0;
       if (value is num) return value;
@@ -187,6 +188,7 @@ class _HistoryPageState extends State<HistoryPage> {
       return DateTime.now();
     }
 
+    // форматируем цифры с пробелами внутри resultText
     String formatResultText(String text) {
       return text.replaceAllMapped(RegExp(r'(\d{4,})'), (match) {
         final raw = match.group(0)!.replaceAll(' ', '');
@@ -196,35 +198,60 @@ class _HistoryPageState extends State<HistoryPage> {
       });
     }
 
-    final resultText = formatResultText((data['result'] ?? '').toString());
+    final rawResultText = (data['result'] ?? '').toString();
+    final resultText = formatResultText(rawResultText);
+
+    // пример resultText:
+    // "Пошлина: 2 000 сом\nНДС: 2 640 сом\nТаможенный сбор: 80 сом\n----------------------\nИтого: 4 720 сом"
+    final lines = resultText.split('\n');
+
+    // попытка вытащить суммы по строкам
+    String extractValueFromLine(int i) {
+      if (i >= lines.length) return '-';
+      final line = lines[i];
+      final parts = line.split(':');
+      if (parts.length < 2) return line;
+      return parts.sublist(1).join(':').trim();
+    }
+
+    // это будет что-то типа "2 000 сом"
+    final dutySumLine = extractValueFromLine(0);
+    final ndsSumLine = extractValueFromLine(1);
+    final feeSumLine = extractValueFromLine(2);
+    final totalSumLine = extractValueFromLine(4); // "4 720 сом"
+
     final priceNum = parseNum(data['price']);
-    final dutyPercentNum = parseNum(data['duty']);
-    final ndsPercentNum = parseNum(data['nds']);
-    final feePercentNum = parseNum(data['fee']);
+    final dutyPercentNum = parseNum(data['duty']); // %
+    final ndsPercentNum = parseNum(data['nds']);   // %
+    final feePercentNum = parseNum(data['fee']);   // %
+
     final savedAt = parseTimestamp(data['timestamp']);
 
-    final displayPrice = priceNum == 0 ? '-' : numberFormatter.format(priceNum);
-    final displayDutyPercent = dutyPercentNum == 0
-        ? '-'
-        : dutyPercentNum.toString();
-    final displayNdsPercent = ndsPercentNum == 0
-        ? '-'
-        : ndsPercentNum.toString();
-    final displayFeePercent = feePercentNum == 0
-        ? '-'
-        : feePercentNum.toString();
+    final displayPrice =
+        priceNum == 0 ? '-' : numberFormatter.format(priceNum);
+    final displayDutyPercent =
+        dutyPercentNum == 0 ? '-' : dutyPercentNum.toString();
+    final displayNdsPercent =
+        ndsPercentNum == 0 ? '-' : ndsPercentNum.toString();
+    final displayFeePercent =
+        feePercentNum == 0 ? '-' : feePercentNum.toString();
 
     final itemName = (data['name'] ?? '').toString();
     final tnved = (data['tnved'] ?? data['tnvEd'] ?? '').toString();
     final company = (data['company'] ?? '').toString();
     final senderCountry = (data['senderCountry'] ?? '').toString();
     final receiverCountry = (data['receiverCountry'] ?? '').toString();
-    final currency = (data['currency'] ?? 'KGS').toString();
+    final currencyCode = (data['currency'] ?? 'KGS').toString(); // "KGS"/"EUR"/"USD"
 
     final savedAtStr = DateFormat('dd.MM.yyyy HH:mm').format(savedAt);
 
-    final currencySymbols = {"KGS": "сом", "EUR": "€", "USDT": "\$"};
-    final symbol = currencySymbols[currency] ?? "сом";
+    // единый словарь валют
+    final currencySymbols = {
+      "KGS": "сом",
+      "EUR": "€",
+      "USD": "\$",
+    };
+    final symbol = currencySymbols[currencyCode] ?? "сом";
 
     Navigator.push(
       context,
@@ -243,6 +270,7 @@ class _HistoryPageState extends State<HistoryPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // блок с инфой о товаре
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.grey.shade900,
@@ -286,7 +314,10 @@ class _HistoryPageState extends State<HistoryPage> {
                     ],
                   ),
                 ),
+
                 const SizedBox(height: 10),
+
+                // блок с расчетами
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.grey.shade900,
@@ -297,49 +328,45 @@ class _HistoryPageState extends State<HistoryPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (resultText.isEmpty)
-                        const Text(
-                          'Нет результатов',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        )
-                      else ...[
-                        _buildResultRow(
-                          Icons.attach_money,
-                          'Стоимость:',
-                          '$displayPrice $symbol',
-                        ),
-                        _buildResultRow(
-                          Icons.percent,
-                          'Пошлина:',
-                          '$displayDutyPercent %',
-                        ),
-                        _buildResultRow(
-                          Icons.percent,
-                          'НДС:',
-                          '$displayNdsPercent %',
-                        ),
-                        _buildResultRow(
-                          Icons.percent,
-                          'Таможенный сбор:',
-                          '$displayFeePercent %',
-                        ),
-                        const SizedBox(height: 10),
-                        const Divider(color: Colors.orange, thickness: 0.6),
-                        const SizedBox(height: 10),
-                        _buildResultRow(
-                          Icons.calculate,
-                          'Итого:',
-                          '$resultText $symbol',
-                        ),
-                      ],
+                      _buildResultRow(
+                        Icons.attach_money,
+                        'Стоимость:',
+                        '$displayPrice $symbol',
+                      ),
+
+                      // суммы в валюте
+                      _buildResultRow(
+                        Icons.currency_exchange,
+                        'Пошлина (${displayDutyPercent} %):',
+                        dutySumLine, // "2 000 сом"
+                      ),
+                      _buildResultRow(
+                        Icons.currency_exchange,
+                        'НДС (${displayNdsPercent} %):',
+                        ndsSumLine, // "2 640 сом"
+                      ),
+                      _buildResultRow(
+                        Icons.currency_exchange,
+                        'Таможенный сбор (${displayFeePercent} %):',
+                        feeSumLine, // "80 сом"
+                      ),
+
+                      const SizedBox(height: 10),
+                      const Divider(color: Colors.orange, thickness: 0.6),
+                      const SizedBox(height: 10),
+
+                      _buildResultRow(
+                        Icons.calculate,
+                        'Итого:',
+                        totalSumLine, // "4 720 сом"
+                      ),
                     ],
                   ),
                 ),
+
                 const SizedBox(height: 24),
+
+                // кнопка "Отправить" -> PDF
                 GestureDetector(
                   onTap: () {
                     Navigator.push(
@@ -353,15 +380,19 @@ class _HistoryPageState extends State<HistoryPage> {
                             senderCountry: senderCountry,
                             receiverCountry: receiverCountry,
                             savedAtStr: savedAtStr,
-                            displayPrice: displayPrice,
+
+                            // для PDF:
+                            displayPrice: '$displayPrice $symbol',
                             displayDutyPercent: displayDutyPercent,
                             displayNdsPercent: displayNdsPercent,
                             displayFeePercent: displayFeePercent,
-                            resultText: "$resultText ",
-                            dutySum: '',
-                            ndsSum: '',
-                            feeSum: '',
-                            currency: symbol,
+
+                            dutySum: dutySumLine, // "2 000 сом"
+                            ndsSum: ndsSumLine,   // "2 640 сом"
+                            feeSum: feeSumLine,   // "80 сом"
+                            resultText: totalSumLine, // "4 720 сом"
+
+                            currency: symbol, // "сом", "€", "$"
                           ),
                         ),
                       ),
@@ -427,7 +458,8 @@ class _HistoryPageState extends State<HistoryPage> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         elevation: 0,
-        title: Text('История расчетов', style: AppTextStyles.appBarTextStyle),
+        title:
+            Text('История расчетов', style: AppTextStyles.appBarTextStyle),
         centerTitle: true,
         actions: [
           IconButton(
@@ -443,9 +475,9 @@ class _HistoryPageState extends State<HistoryPage> {
           child: historyDocs.isEmpty
               ? ListView(
                   children: [
-                    SizedBox(height: 250),
-                    Icon(Icons.history, color: Colors.grey, size: 48),
-                    SizedBox(height: 12),
+                    const SizedBox(height: 250),
+                    const Icon(Icons.history, color: Colors.grey, size: 48),
+                    const SizedBox(height: 12),
                     Center(
                       child: Text(
                         'История пуста',
@@ -466,8 +498,8 @@ class _HistoryPageState extends State<HistoryPage> {
                     final data = doc.data();
                     final displayTitle =
                         (data['name'] ?? '').toString().isNotEmpty
-                        ? data['name'].toString()
-                        : doc.id;
+                            ? data['name'].toString()
+                            : doc.id;
                     return Card(
                       color: Colors.grey[900],
                       shape: RoundedRectangleBorder(

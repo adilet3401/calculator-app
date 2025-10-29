@@ -1,3 +1,4 @@
+// pdf_report.dart
 import 'package:pdf/widgets.dart' as pw;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
@@ -10,15 +11,18 @@ class PdfReport {
     required String senderCountry,
     required String receiverCountry,
     required String savedAtStr,
-    required String displayPrice,
-    required String displayDutyPercent, // % (строкой)
-    required String displayNdsPercent, // % (строкой)
-    required String displayFeePercent, // % (строкой)
-    required String resultText, // сумма итоговая
-    required String dutySum, // сумма пошлины
-    required String ndsSum, // сумма НДС
-    required String feeSum, // сумма сбора
-    required String currency,
+
+    required String displayPrice,        // "20 000 сом"
+    required String displayDutyPercent,  // "10"
+    required String displayNdsPercent,   // "12"
+    required String displayFeePercent,   // "0.4"
+
+    required String dutySum,             // "2 000 сом"
+    required String ndsSum,              // "2 640 сом"
+    required String feeSum,              // "80 сом"
+    required String resultText,          // "4 720 сом"
+
+    required String currency,            // "сом" / "€" / "$" (символ)
   }) async {
     final font = pw.Font.ttf(
       await rootBundle.load('assets/fonts/Nunito-Regular.ttf'),
@@ -40,58 +44,65 @@ class PdfReport {
         build: (context) {
           return pw.Container(
             width: double.infinity,
-            color: PdfColors.white, // ✅ белый фон страницы
+            color: PdfColors.white,
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                // Заголовок
                 pw.Text(
                   'Отчет',
                   style: pw.TextStyle(
                     font: boldFont,
                     fontSize: 26,
-                    color: PdfColor.fromInt(0xFFFFA500), // оранжевый акцент
+                    color: PdfColor.fromInt(0xFFFFA500),
                   ),
                 ),
                 pw.SizedBox(height: 20),
 
-                // Первый блок
                 _pdfBox([
                   _pdfRow('Наименование:', itemName, font, boldFont),
                   _pdfRow('ТНВЭД код:', tnved, font, boldFont),
                   _pdfRow('Имя/Компания:', company, font, boldFont),
                   _pdfRow('Страна отправитель:', senderCountry, font, boldFont),
-                  _pdfRow(
-                    'Страна получатель:',
-                    receiverCountry,
-                    font,
-                    boldFont,
-                  ),
+                  _pdfRow('Страна получатель:', receiverCountry, font, boldFont),
                   _pdfRow('Сохранено:', savedAtStr, font, boldFont),
                 ]),
 
                 pw.SizedBox(height: 14),
 
-                // Второй блок (Итого)
                 _pdfBox([
+                  _pdfRow('Стоимость:', displayPrice, font, boldFont),
+
                   _pdfRow(
-                    'Стоимость:',
-                    '$displayPrice $currency',
+                    'Пошлина ($displayDutyPercent %):',
+                    dutySum, // уже "2 000 сом"
                     font,
                     boldFont,
                   ),
-                  _pdfRow('Пошлина:', '$displayDutyPercent %', font, boldFont),
-                  _pdfRow('НДС:', '$displayNdsPercent %', font, boldFont),
+
                   _pdfRow(
-                    'Таможенный сбор:',
-                    '$displayFeePercent %',
+                    'НДС ($displayNdsPercent %):',
+                    ndsSum,
                     font,
                     boldFont,
                   ),
+
+                  _pdfRow(
+                    'Таможенный сбор ($displayFeePercent %):',
+                    feeSum,
+                    font,
+                    boldFont,
+                  ),
+
                   pw.SizedBox(height: 10),
                   pw.Divider(color: PdfColors.orange, thickness: 1),
                   pw.SizedBox(height: 10),
-                  _pdfRow('Итого:', resultText, font, boldFont),
+
+                  _pdfRow(
+                    'Итого:',
+                    resultText, // "4 720 сом"
+                    font,
+                    boldFont,
+                  ),
                 ]),
               ],
             ),
@@ -104,16 +115,15 @@ class PdfReport {
   }
 }
 
-/// Контейнер-блок с рамкой (светлый стиль)
 pw.Widget _pdfBox(List<pw.Widget> children) {
   return pw.Container(
     width: double.infinity,
     decoration: pw.BoxDecoration(
-      color: PdfColor.fromInt(0xFFF9F9F9), // ✅ светло-серый фон блока
+      color: PdfColor.fromInt(0xFFF9F9F9),
       border: pw.Border.all(
         color: PdfColor.fromInt(0xFFFFA500),
         width: 1,
-      ), // оранжевая рамка
+      ),
       borderRadius: pw.BorderRadius.circular(12),
     ),
     padding: pw.EdgeInsets.all(14),
@@ -124,8 +134,8 @@ pw.Widget _pdfBox(List<pw.Widget> children) {
   );
 }
 
-/// Одна строка отчета (заголовок + значение)
-pw.Widget _pdfRow(String title, String value, pw.Font font, pw.Font boldFont) {
+pw.Widget _pdfRow(
+    String title, String value, pw.Font font, pw.Font boldFont) {
   return pw.Padding(
     padding: pw.EdgeInsets.symmetric(vertical: 4),
     child: pw.Row(
@@ -135,7 +145,7 @@ pw.Widget _pdfRow(String title, String value, pw.Font font, pw.Font boldFont) {
             title,
             style: pw.TextStyle(
               font: font,
-              color: PdfColor.fromInt(0xFF444444), // тёмно-серый текст
+              color: PdfColor.fromInt(0xFF444444),
               fontSize: 18,
             ),
           ),
@@ -144,7 +154,7 @@ pw.Widget _pdfRow(String title, String value, pw.Font font, pw.Font boldFont) {
           value,
           style: pw.TextStyle(
             font: boldFont,
-            color: PdfColor.fromInt(0xFF222222), // почти черный
+            color: PdfColor.fromInt(0xFF222222),
             fontSize: 18,
           ),
         ),
@@ -153,6 +163,7 @@ pw.Widget _pdfRow(String title, String value, pw.Font font, pw.Font boldFont) {
   );
 }
 
+// модель данных для PDF
 class PdfReportData {
   final String itemName;
   final String tnved;
@@ -160,15 +171,18 @@ class PdfReportData {
   final String senderCountry;
   final String receiverCountry;
   final String savedAtStr;
+
   final String displayPrice;
   final String displayDutyPercent;
   final String displayNdsPercent;
   final String displayFeePercent;
-  final String resultText;
+
   final String dutySum;
   final String ndsSum;
   final String feeSum;
-  final String currency; // 👈 добавляем сюда валюту
+  final String resultText;
+
+  final String currency;
 
   PdfReportData({
     required this.itemName,
@@ -181,10 +195,10 @@ class PdfReportData {
     required this.displayDutyPercent,
     required this.displayNdsPercent,
     required this.displayFeePercent,
-    required this.resultText,
     required this.dutySum,
     required this.ndsSum,
     required this.feeSum,
+    required this.resultText,
     required this.currency,
   });
 }

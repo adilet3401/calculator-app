@@ -22,18 +22,19 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
   bool roundEachStep = true;
   bool hasCalculated = false;
   bool isSaving = false;
-  bool isSaved = false; // 👈 состояние для галочки
+  bool isSaved = false;
   String rastamozhkaResult = "";
 
-  /// 🔹 Валюта
+  /// Валюта (код)
   String selectedCurrency = "KGS";
+
+  /// Символы валют
   final Map<String, String> currencySymbols = {
     "KGS": "сом",
     "EUR": "€",
-    "USD": '\$',
+    "USD": "\$",
   };
 
-  /// 🔽 Метод расчета
   void calculateRastamozhka() {
     final priceText = priceController.text.replaceAll(' ', '');
     if (priceText.isEmpty || priceText == "0") {
@@ -50,25 +51,29 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
     final feePercent = double.tryParse(feeController.text) ?? 0;
     final freight = double.tryParse(freightController.text) ?? 0;
 
+    // расчёт
     int dutySum = (price * dutyPercent / 100).round();
     int feeSum = (price * feePercent / 100).round();
+
     double vatBase = price + dutySum + freight;
     if (includeFeeInVatBase) vatBase += feeSum;
     int ndsSum = (vatBase * ndsPercent / 100).round();
+
     int total = dutySum + ndsSum + feeSum;
+
+    final currSymbol = currencySymbols[selectedCurrency] ?? "";
 
     setState(() {
       rastamozhkaResult =
-          "Пошлина: ${_formatNumber(dutySum)} ${currencySymbols[selectedCurrency]}\n"
-          "НДС: ${_formatNumber(ndsSum)} ${currencySymbols[selectedCurrency]}\n"
-          "Таможенный сбор: ${_formatNumber(feeSum)} ${currencySymbols[selectedCurrency]}\n"
+          "Пошлина: ${_formatNumber(dutySum)} $currSymbol\n"
+          "НДС: ${_formatNumber(ndsSum)} $currSymbol\n"
+          "Таможенный сбор: ${_formatNumber(feeSum)} $currSymbol\n"
           "----------------------\n"
-          "Итого: ${_formatNumber(total)} ${currencySymbols[selectedCurrency]}";
+          "Итого: ${_formatNumber(total)} $currSymbol";
       hasCalculated = true;
     });
   }
 
-  /// 🔘 Сохранение в Firestore
   Future<void> saveToHistoryFirebase({
     required String name,
     required String tnvEd,
@@ -89,15 +94,16 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
     }
 
     final data = {
-      'price': priceController.text,
-      'duty': dutyController.text,
-      'nds': ndsController.text,
-      'fee': feeController.text,
-      'freight': freightController.text,
+      'price': priceController.text,           // исходная стоимость
+      'duty': dutyController.text,             // %
+      'nds': ndsController.text,               // %
+      'fee': feeController.text,               // %
+      'freight': freightController.text,       // доставка
       'includeFeeInVatBase': includeFeeInVatBase,
       'roundEachStep': roundEachStep,
-      'result': rastamozhkaResult,
-      'currency': selectedCurrency, // 👈 сохраняем валюту
+      'result': rastamozhkaResult,             // 💥 форматированный текст с суммами и валютой
+      'currency': selectedCurrency,            // 💥 сохраняем код валюты: "KGS"/"EUR"/"USD"
+
       'name': name,
       'tnved': tnvEd,
       'company': company,
@@ -116,10 +122,9 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
       if (!mounted) return;
       setState(() {
         isSaving = false;
-        isSaved = true; // 👈 показываем галочку
+        isSaved = true;
       });
 
-      // ⏳ Через 2 секунды вернём кнопку в обычное состояние
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) {
           setState(() {
@@ -135,15 +140,13 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
     }
   }
 
-  /// 🔘 BottomSheet для ввода данных
   Future<void> _showSaveBottomSheet() async {
     final nameController = TextEditingController();
     final tnvEdController = TextEditingController();
     final companyController = TextEditingController();
     final senderCountryController = TextEditingController(text: "Китай");
-    final receiverCountryController = TextEditingController(
-      text: "Кыргызстан, Бишкек",
-    );
+    final receiverCountryController =
+        TextEditingController(text: "Кыргызстан, Бишкек");
 
     await showModalBottomSheet(
       context: context,
@@ -169,7 +172,11 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
                   "Наименование товара",
                   nameController,
                 ),
-                _buildBottomSheetField(Icons.tag, "ТНВЭД код", tnvEdController),
+                _buildBottomSheetField(
+                  Icons.tag,
+                  "ТНВЭД код",
+                  tnvEdController,
+                ),
                 _buildBottomSheetField(
                   Icons.business,
                   "Имя / Компания",
@@ -237,10 +244,8 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
                 left: 20,
                 right: 20,
                 top: 20,
-                bottom:
-                    kBottomNavigationBarHeight + 20, // 🔥 добавили отступ снизу
+                bottom: kBottomNavigationBarHeight + 20,
               ),
-
               child: ConstrainedBox(
                 constraints: BoxConstraints(minHeight: constraints.maxHeight),
                 child: IntrinsicHeight(
@@ -293,7 +298,7 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
                       ),
                       const SizedBox(height: 8),
 
-                      /// 🔹 выбор валюты
+                      // выбор валюты
                       Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.symmetric(
@@ -365,12 +370,14 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
                         value: roundEachStep,
                         onChanged: (v) => setState(() => roundEachStep = v),
                       ),
+
                       const SizedBox(height: 20),
                       _buildGradientButton(
                         text: "Рассчитать",
                         colors: [Colors.deepOrange, Colors.orangeAccent],
                         onTap: calculateRastamozhka,
                       ),
+
                       if (hasCalculated) ...[
                         const SizedBox(height: 16),
                         if (!isGuest)
@@ -428,13 +435,12 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
     );
   }
 
-  /// 🔲 Поля ввода
-  /// 🔲 Поля ввода
+  // поля ввода
   Widget _buildCardField(
     String label,
     TextEditingController controller, {
     bool isPrice = false,
-    IconData? icon, // 👈 добавили параметр для иконки
+    IconData? icon,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -451,9 +457,8 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
         ],
         style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
-          prefixIcon: icon != null
-              ? Icon(icon, color: Colors.orangeAccent) // 👈 иконка слева
-              : null,
+          prefixIcon:
+              icon != null ? Icon(icon, color: Colors.orangeAccent) : null,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 14,
@@ -466,7 +471,7 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
     );
   }
 
-  /// 🔘 Кнопки
+  // кнопка
   Widget _buildGradientButton({
     required String text,
     required List<Color> colors,
@@ -509,7 +514,7 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
     );
   }
 
-  /// 🔘 Тумблеры
+  // свитч
   Widget _toggle({
     required String title,
     required bool value,
@@ -525,7 +530,7 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
     );
   }
 
-  /// 🔲 Поле bottom sheet
+  // поля в bottom sheet
   Widget _buildBottomSheetField(
     IconData icon,
     String hint,
@@ -555,7 +560,6 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
     );
   }
 
-  /// 🔥 Форматирование чисел
   String _formatNumber(int value) {
     final str = value.toString();
     final buffer = StringBuffer();
@@ -572,7 +576,7 @@ class _RastamozhkaPageState extends State<RastamozhkaPage> {
   }
 }
 
-/// 🔥 InputFormatter для поля ввода
+/// форматтер цены с пробелами
 class ThousandsFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(

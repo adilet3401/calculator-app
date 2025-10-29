@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
-import 'package:calculator/pages/pdf_report.dart' as pw; // ваш PdfReport
+import 'package:calculator/pages/pdf_report.dart' as pw;
 
 class PdfPreviewPage extends StatelessWidget {
-  final pw.PdfReportData reportData; // данные для отчета
+  final pw.PdfReportData reportData;
 
   const PdfPreviewPage({super.key, required this.reportData});
 
@@ -18,14 +18,14 @@ class PdfPreviewPage extends StatelessWidget {
       senderCountry: reportData.senderCountry,
       receiverCountry: reportData.receiverCountry,
       savedAtStr: reportData.savedAtStr,
-      displayPrice: reportData.displayPrice,
+      displayPrice: reportData.displayPrice, // уже "20 000 сом"
       displayDutyPercent: reportData.displayDutyPercent,
       displayNdsPercent: reportData.displayNdsPercent,
       displayFeePercent: reportData.displayFeePercent,
-      resultText: reportData.resultText,
       dutySum: reportData.dutySum,
       ndsSum: reportData.ndsSum,
       feeSum: reportData.feeSum,
+      resultText: reportData.resultText, // "4 720 сом"
       currency: reportData.currency,
     );
 
@@ -61,17 +61,20 @@ class PdfPreviewPage extends StatelessWidget {
             iconTheme: const IconThemeData(color: Colors.orange),
             actions: [
               IconButton(
-                icon: const Icon(Icons.ios_share_rounded, color: Colors.orange),
+                icon: const Icon(Icons.ios_share_rounded,
+                    color: Colors.orange),
                 onPressed: () async {
-                  // ignore: deprecated_member_use
-                  await Share.shareXFiles([
-                    XFile(file.path),
-                  ], text: 'PDF отчет');
+                  await Share.shareXFiles(
+                    [XFile(file.path)],
+                    text: 'PDF отчет',
+                  );
                 },
               ),
             ],
           ),
-          body: PdfPreview(build: (format) async => await file.readAsBytes()),
+          body: PdfPreview(
+            build: (format) async => await file.readAsBytes(),
+          ),
         );
       },
     );
