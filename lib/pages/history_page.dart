@@ -71,6 +71,7 @@ class _HistoryPageState extends State<HistoryPage> {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
+                // ignore: deprecated_member_use
                 color: Colors.black.withOpacity(0.6),
                 blurRadius: 12,
                 offset: const Offset(0, 6),
@@ -82,6 +83,7 @@ class _HistoryPageState extends State<HistoryPage> {
             children: [
               CircleAvatar(
                 radius: 32,
+                // ignore: deprecated_member_use
                 backgroundColor: Colors.redAccent.withOpacity(0.15),
                 child: const Icon(
                   Icons.delete_forever,
@@ -337,17 +339,17 @@ class _HistoryPageState extends State<HistoryPage> {
                       // суммы в валюте
                       _buildResultRow(
                         Icons.currency_exchange,
-                        'Пошлина (${displayDutyPercent} %):',
+                        'Пошлина ($displayDutyPercent %):',
                         dutySumLine, // "2 000 сом"
                       ),
                       _buildResultRow(
                         Icons.currency_exchange,
-                        'НДС (${displayNdsPercent} %):',
+                        'НДС ($displayNdsPercent %):',
                         ndsSumLine, // "2 640 сом"
                       ),
                       _buildResultRow(
                         Icons.currency_exchange,
-                        'Таможенный сбор (${displayFeePercent} %):',
+                        'Таможенный сбор ($displayFeePercent %):',
                         feeSumLine, // "80 сом"
                       ),
 

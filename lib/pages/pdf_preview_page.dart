@@ -64,6 +64,7 @@ class PdfPreviewPage extends StatelessWidget {
                 icon: const Icon(Icons.ios_share_rounded,
                     color: Colors.orange),
                 onPressed: () async {
+                  // ignore: deprecated_member_use
                   await Share.shareXFiles(
                     [XFile(file.path)],
                     text: 'PDF отчет',
